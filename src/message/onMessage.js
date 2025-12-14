@@ -559,6 +559,28 @@ export const onMessage = async () => {
           }
           break;
         }
+        case "updateDesign": {
+          // 更新工艺和工艺牌子颜色
+          const designData = event.data.param;
+          if (!Array.isArray(designData)) {
+            console.warn("updateDesign 参数格式错误，应为数组");
+            return;
+          }
+
+          console.log("收到更新设计指令:", designData);
+
+          // 室内场景处理
+          if (core.indoorSubsystem) {
+            core.indoorSubsystem.updateDesign(designData);
+          }
+
+          // 室外场景处理
+          if (core.ground) {
+            core.ground.updateDesign(designData);
+          }
+
+          break;
+        }
       }
     }
   });

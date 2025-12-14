@@ -61,6 +61,9 @@ export class IndoorSubsystem extends CustomSystem {
     // 设备标签数据存储（按楼层存储）
     this.deviceLabelsData = {};
 
+    // 工艺设计数据存储（全局存储，按 code 索引）
+    this.designDataMap = {};
+
     // 初始化场景提示
     this.sceneHint = new SceneHint();
 
@@ -643,6 +646,9 @@ export class IndoorSubsystem extends CustomSystem {
             // 显示当前楼层的标签
             this.showFloorLabels(floor);
 
+            // 从存储的数据中检索并应用设计数据
+            this.applyStoredDesignData(floor);
+
             // 确保在楼层切换完成后重新注册右键双击事件
             this.setupFloorRaycastEvents(floor);
             this.sceneHint.updateMessage("右键双击恢复楼栋");
@@ -874,6 +880,9 @@ export class IndoorSubsystem extends CustomSystem {
           // 显示当前楼层的标签
           this.showFloorLabels(target);
 
+          // 从存储的数据中检索并应用设计数据
+          this.applyStoredDesignData(target);
+
           // 楼层内部切换完成，解析Promise
           resolve();
         })
@@ -975,6 +984,9 @@ export class IndoorSubsystem extends CustomSystem {
 
     // 清理切换标签
     this.clearQiehuanLabels();
+
+    // 清理工艺设计数据存储
+    this.designDataMap = {};
 
     // 清理BoxModel地面
     if (this.boxModelGround) {
@@ -1397,6 +1409,9 @@ export class IndoorSubsystem extends CustomSystem {
     this.floorsName = [];
     this.currentFloor = null;
     this.endChangeFloor = true;
+
+    // 清理工艺设计数据存储（可选：如果需要切换建筑时保留数据，可以注释掉这行）
+    // this.designDataMap = {};
 
     this.resetControls();
     this.clearIndoorHDR();
@@ -2351,6 +2366,299 @@ export class IndoorSubsystem extends CustomSystem {
   }
 
   /**
+   * 更新工艺和工艺牌子颜色
+   * @param {Array} designData - 设计数据数组，包含 {code, name, status}
+   */
+  updateDesign(designData) {
+    if (!Array.isArray(designData)) {
+      console.warn("updateDesign 参数格式错误，应为数组");
+      return;
+    }
+
+    console.log("开始更新工艺设计，数据:", designData);
+
+    // 存储设计数据（按 code 索引，便于后续检索）
+    designData.forEach((design) => {
+      const { code } = design;
+      if (code) {
+        this.designDataMap[code] = design;
+        console.log(`存储工艺设计数据: ${code}`, design);
+      } else {
+        console.warn("设计数据缺少 code 字段:", design);
+      }
+    });
+
+    // 如果当前有楼层，立即应用数据
+    if (this.currentFloor && this.currentFloor.name) {
+      this.applyStoredDesignData(this.currentFloor.name);
+    } else {
+      console.log("当前没有楼层，数据已存储，将在楼层切换后自动应用");
+    }
+
+    console.log("工艺设计数据存储完成，当前存储的数据:", this.designDataMap);
+  }
+
+  /**
+   * 从存储的数据中检索并应用设计数据到指定楼层
+   * @param {string} floorName - 楼层名称
+   */
+  applyStoredDesignData(floorName) {
+    if (!floorName || !this.simpleLabel[floorName]) {
+      console.log(`楼层 ${floorName} 不存在或标签未初始化`);
+      return;
+    }
+
+    const floorLabels = this.simpleLabel[floorName];
+    if (!floorLabels) {
+      console.log(`楼层 ${floorName} 没有标签数据`);
+      return;
+    }
+
+    console.log(`开始为楼层 ${floorName} 应用存储的设计数据`);
+
+    // 遍历存储的设计数据
+    Object.keys(this.designDataMap).forEach((code) => {
+      const design = this.designDataMap[code];
+      
+      // 验证设计数据是否存在
+      if (!design || typeof design !== 'object') {
+        console.warn(`设计数据无效 (code: ${code}):`, design);
+        return;
+      }
+
+      const { name, status } = design;
+
+      // 查找对应的标签
+      // 方法1：直接通过 code 查找（code 对应 labelName）
+      let labelInfo = floorLabels[code];
+
+      // 方法2：如果直接查找不到，遍历查找设备对象的 name
+      if (!labelInfo) {
+        const foundKey = Object.keys(floorLabels).find((labelName) => {
+          const deviceObj = floorLabels[labelName]?.deviceObject;
+          if (deviceObj && deviceObj.name) {
+            // 提取设备对象的 code（去掉 _shebei 后缀）
+            let deviceCode = deviceObj.name;
+            if (deviceObj.name.includes("_shebei")) {
+              deviceCode = deviceObj.name.split("_shebei")[0];
+            } else if (deviceObj.name.includes("_")) {
+              deviceCode = deviceObj.name.split("_")[0];
+            }
+            // 检查是否匹配
+            return deviceCode === code;
+          }
+          return false;
+        });
+
+        if (foundKey) {
+          labelInfo = floorLabels[foundKey];
+        }
+      }
+
+      if (labelInfo) {
+        this.updateSingleDesign(labelInfo, name, status, code);
+        console.log(`楼层 ${floorName} 的工艺 ${code} 已应用设计数据`);
+      } else {
+        // 不在当前楼层的设备，不输出警告（这是正常的）
+        // console.log(`楼层 ${floorName} 未找到 code 为 ${code} 的工艺标签`);
+      }
+    });
+
+    console.log(`楼层 ${floorName} 的设计数据应用完成`);
+  }
+
+  /**
+   * 更新单个工艺和牌子的颜色
+   * @param {Object} labelInfo - 标签信息对象 {element, css2dObject, deviceObject}
+   * @param {string} name - 牌子显示的名称
+   * @param {string} status - 状态颜色（十六进制字符串）
+   * @param {string} code - 工艺代码
+   */
+  updateSingleDesign(labelInfo, name, status, code) {
+    if (!labelInfo) {
+      console.warn("标签信息不存在");
+      return;
+    }
+
+    // 验证 status 参数
+    if (!status || typeof status !== 'string') {
+      console.warn(`工艺 ${code} 的状态颜色无效: ${status}，跳过颜色更新`);
+      // 如果只有名称，仍然可以更新名称
+      if (name && labelInfo.element) {
+        this.updateLabelElement(labelInfo.element, name, null);
+      }
+      return;
+    }
+
+    const { element, css2dObject, deviceObject } = labelInfo;
+
+    // 1. 更新工艺模型（deviceObject）的颜色
+    if (deviceObject) {
+      this.updateDeviceObjectColor(deviceObject, status);
+    } else {
+      console.warn(`设备对象不存在 (code: ${code})`);
+    }
+
+    // 2. 更新工艺牌子（element）的颜色和文本
+    if (element) {
+      this.updateLabelElement(element, name, status);
+    } else {
+      console.warn(`标签元素不存在 (code: ${code})`);
+    }
+
+    console.log(`工艺 ${code} 更新完成: 名称=${name}, 颜色=${status}`);
+  }
+
+  /**
+   * 更新设备对象（工艺模型）的颜色
+   * @param {THREE.Object3D} deviceObject - 设备对象
+   * @param {string} colorHex - 颜色值（十六进制字符串，如 '#000000'）
+   */
+  updateDeviceObjectColor(deviceObject, colorHex) {
+    if (!deviceObject) return;
+    // 验证颜色值
+    if (!colorHex || typeof colorHex !== 'string') {
+      console.warn(`无效的颜色值: ${colorHex}，跳过模型颜色更新`);
+      return;
+    }
+
+    const color = new THREE.Color(colorHex);
+
+    // 遍历设备对象的所有 mesh，更新材质颜色
+    deviceObject.traverse((child) => {
+      if (child.isMesh && child.material) {
+        // 处理材质数组
+        const materials = Array.isArray(child.material)
+          ? child.material
+          : [child.material];
+
+        materials.forEach((material) => {
+          if (material.isMeshStandardMaterial || material.isMeshPhysicalMaterial) {
+            // 使用自发光（emissive）来添加一层淡淡的颜色覆盖，而不是完全替换原色
+            // 这样可以保留原始材质的纹理和细节，同时用颜色来区分
+            material.emissive.copy(color);
+            material.emissiveIntensity = 0.45; // 设置较低的自发光强度，让颜色更柔和
+            
+            // 可选：轻微调整基础颜色，但保持原色的主色调
+            // 将新颜色混合到原色中，使用较低的混合比例
+            if (material.color) {
+              const originalColor = material.color.clone();
+              // 混合原色和新颜色（10% 新颜色 + 90% 原色）
+              material.color.lerp(color, 0.1);
+            }
+            
+            material.needsUpdate = true;
+          }
+        });
+      }
+    });
+  }
+
+  /**
+   * 更新标签元素（工艺牌子）的颜色和文本
+   * @param {HTMLElement} element - 标签DOM元素
+   * @param {string} name - 要显示的名称
+   * @param {string} colorHex - 颜色值（十六进制字符串，可选）
+   */
+  updateLabelElement(element, name, colorHex) {
+    if (!element) return;
+
+    // 更新文本内容（如果有 name 参数）
+    if (name) {
+      // 查找显示名称的元素
+      const nameSpan = element.querySelector("span");
+      if (nameSpan) {
+        nameSpan.textContent = name;
+      } else {
+        // 如果没有 span，直接更新 element 的文本内容
+        const textNode = Array.from(element.childNodes).find(
+          (node) => node.nodeType === Node.TEXT_NODE
+        );
+        if (textNode) {
+          textNode.textContent = name;
+        }
+      }
+    }
+
+    // 更新颜色样式（如果有 colorHex 参数）
+    if (colorHex && typeof colorHex === 'string') {
+      // 将十六进制颜色转换为 RGB
+      const rgb = this.hexToRgb(colorHex);
+      if (rgb) {
+        // 更新背景色和边框色
+        element.style.borderColor = colorHex;
+        // 更新文本阴影颜色（使用稍亮一点的颜色）
+        const brighterColor = this.brightenColor(colorHex, 1.2);
+        element.style.textShadow = `0 1px 2px ${brighterColor}`;
+        // 更新渐变背景（可选，如果需要）
+        // element.style.background = `linear-gradient(135deg, ${this.addAlpha(colorHex, 0.1)}, ${this.addAlpha(colorHex, 0.05)})`;
+      }
+    }
+  }
+
+  /**
+   * 将十六进制颜色转换为 RGB
+   * @param {string} hex - 十六进制颜色值
+   * @returns {Object|null} {r, g, b} 或 null
+   */
+  hexToRgb(hex) {
+    // 验证参数
+    if (!hex || typeof hex !== 'string') {
+      console.warn(`hexToRgb: 无效的颜色值: ${hex}`);
+      return null;
+    }
+
+    // 移除 # 号
+    const cleanHex = hex.replace("#", "");
+    
+    // 处理3位和6位十六进制
+    const match = cleanHex.length === 3
+      ? cleanHex.match(/^([a-f\d])([a-f\d])([a-f\d])$/i)
+      : cleanHex.length === 6
+      ? cleanHex.match(/^([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i)
+      : null;
+
+    if (!match) {
+      console.warn(`hexToRgb: 无效的颜色格式: ${hex}`);
+      return null;
+    }
+
+    return {
+      r: cleanHex.length === 3
+        ? parseInt(match[1] + match[1], 16)
+        : parseInt(match[1], 16),
+      g: cleanHex.length === 3
+        ? parseInt(match[2] + match[2], 16)
+        : parseInt(match[2], 16),
+      b: cleanHex.length === 3
+        ? parseInt(match[3] + match[3], 16)
+        : parseInt(match[3], 16),
+    };
+  }
+
+  /**
+   * 增亮颜色
+   * @param {string} hex - 十六进制颜色值
+   * @param {number} factor - 增亮系数（>1为增亮，<1为变暗）
+   * @returns {string} 新的十六进制颜色值
+   */
+  brightenColor(hex, factor) {
+    if (!hex || typeof hex !== 'string') {
+      console.warn(`brightenColor: 无效的颜色值: ${hex}`);
+      return hex || '#ffffff'; // 返回原始值或默认白色
+    }
+
+    const rgb = this.hexToRgb(hex);
+    if (!rgb) return hex;
+
+    const newR = Math.min(255, Math.round(rgb.r * factor));
+    const newG = Math.min(255, Math.round(rgb.g * factor));
+    const newB = Math.min(255, Math.round(rgb.b * factor));
+
+    return `#${newR.toString(16).padStart(2, "0")}${newG.toString(16).padStart(2, "0")}${newB.toString(16).padStart(2, "0")}`;
+  }
+
+  /**
    * 处理设备点击事件
    * @param {string} deviceCode - 设备名称
    */
@@ -2512,6 +2820,9 @@ export class IndoorSubsystem extends CustomSystem {
             // 显示当前楼层的标签
             this.showFloorLabels(floor);
 
+            // 从存储的数据中检索并应用设计数据
+            this.applyStoredDesignData(floor);
+
             // 注意：这里不重新设置射线检测事件，保持现有的事件监听
             this.sceneHint.updateMessage("右键双击恢复楼栋");
 
@@ -2588,6 +2899,9 @@ export class IndoorSubsystem extends CustomSystem {
 
           // 显示当前楼层的标签
           this.showFloorLabels(target);
+
+          // 从存储的数据中检索并应用设计数据
+          this.applyStoredDesignData(target);
 
           // 重新注册右键双击事件，确保事件监听正常工作
           this.setupFloorRaycastEvents(target);

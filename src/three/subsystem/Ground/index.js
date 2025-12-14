@@ -134,6 +134,9 @@ export class Ground extends CustomSystem {
     this.buildingHoverRings = new BuildingHoverRings();
     this.scene.add(this.buildingHoverRings);
 
+    // 初始化工艺标签存储（类似室内场景的 simpleLabel）
+    this.simpleLabel = {};
+
     this.init();
   }
 
@@ -1318,6 +1321,210 @@ string} name
       }
       super.updateOrientation();
     }); // 镜头动画结束后执行事件绑定
+  }
+
+  /**
+   * 更新工艺和工艺牌子颜色（室外场景）
+   * @param {Array} designData - 设计数据数组，包含 {code, name, status}
+   */
+  updateDesign(designData) {
+    if (!Array.isArray(designData)) {
+      console.warn("updateDesign 参数格式错误，应为数组");
+      return;
+    }
+
+    console.log("开始更新室外场景工艺设计，数据:", designData);
+
+    // 遍历场景中的所有对象，查找匹配的设备
+    designData.forEach((design) => {
+      const { code, name, status } = design;
+
+      if (!code) {
+        console.warn("设计数据缺少 code 字段:", design);
+        return;
+      }
+
+      // 在场景中查找对应的对象
+      let foundObject = null;
+      this.scene.traverse((object) => {
+        // 检查对象名称是否匹配 code
+        if (object.name && (object.name === code || object.name.includes(code))) {
+          // 进一步检查：如果名称包含 "_shebei"，提取前面的部分进行比较
+          if (object.name.includes("_shebei")) {
+            const deviceCode = object.name.split("_shebei")[0];
+            if (deviceCode === code) {
+              foundObject = object;
+              return; // 找到后停止遍历
+            }
+          } else if (object.name === code) {
+            foundObject = object;
+            return;
+          }
+        }
+      });
+
+      if (foundObject) {
+        this.updateGroundSingleDesign(foundObject, name, status, code);
+      } else {
+        console.warn(`未找到 code 为 ${code} 的工艺模型（室外场景）`);
+      }
+    });
+
+    console.log("室外场景工艺设计更新完成");
+  }
+
+  /**
+   * 更新室外场景单个工艺和牌子的颜色
+   * @param {THREE.Object3D} deviceObject - 设备对象
+   * @param {string} name - 牌子显示的名称
+   * @param {string} status - 状态颜色（十六进制字符串）
+   * @param {string} code - 工艺代码
+   */
+  updateGroundSingleDesign(deviceObject, name, status, code) {
+    if (!deviceObject) {
+      console.warn("设备对象不存在");
+      return;
+    }
+
+    // 1. 更新工艺模型（deviceObject）的颜色
+    this.updateDeviceObjectColor(deviceObject, status);
+
+    // 2. 查找并更新对应的标签（如果存在）
+    // 检查 simpleLabel 中是否有对应的标签
+    if (this.simpleLabel && this.simpleLabel[code]) {
+      const labelInfo = this.simpleLabel[code];
+      if (labelInfo.element) {
+        this.updateLabelElement(labelInfo.element, name, status);
+      }
+    } else {
+      // 如果没有在 simpleLabel 中找到，尝试在 labelGroup 中查找
+      // 注意：这里可能需要根据实际标签结构进行调整
+      console.log(`室外场景未找到 code 为 ${code} 的标签，仅更新模型颜色`);
+    }
+
+    console.log(`室外场景工艺 ${code} 更新完成: 名称=${name}, 颜色=${status}`);
+  }
+
+  /**
+   * 更新设备对象（工艺模型）的颜色
+   * @param {THREE.Object3D} deviceObject - 设备对象
+   * @param {string} colorHex - 颜色值（十六进制字符串，如 '#000000'）
+   */
+  updateDeviceObjectColor(deviceObject, colorHex) {
+    if (!deviceObject) return;
+
+    const color = new THREE.Color(colorHex);
+
+    // 遍历设备对象的所有 mesh，更新材质颜色
+    deviceObject.traverse((child) => {
+      if (child.isMesh && child.material) {
+        // 处理材质数组
+        const materials = Array.isArray(child.material)
+          ? child.material
+          : [child.material];
+
+        materials.forEach((material) => {
+          if (
+            material.isMeshStandardMaterial ||
+            material.isMeshPhysicalMaterial
+          ) {
+            // 设置材质的颜色
+            material.color.copy(color);
+            material.needsUpdate = true;
+          }
+        });
+      }
+    });
+  }
+
+  /**
+   * 更新标签元素（工艺牌子）的颜色和文本
+   * @param {HTMLElement} element - 标签DOM元素
+   * @param {string} name - 要显示的名称
+   * @param {string} colorHex - 颜色值（十六进制字符串）
+   */
+  updateLabelElement(element, name, colorHex) {
+    if (!element) return;
+
+    // 更新文本内容（如果有 name 参数）
+    if (name) {
+      // 查找显示名称的元素
+      const nameSpan = element.querySelector("span");
+      if (nameSpan) {
+        nameSpan.textContent = name;
+      } else {
+        // 如果没有 span，直接更新 element 的文本内容
+        const textNode = Array.from(element.childNodes).find(
+          (node) => node.nodeType === Node.TEXT_NODE
+        );
+        if (textNode) {
+          textNode.textContent = name;
+        }
+      }
+    }
+
+    // 更新颜色样式
+    const rgb = this.hexToRgb(colorHex);
+    if (rgb) {
+      // 更新背景色和边框色
+      element.style.borderColor = colorHex;
+      // 更新文本阴影颜色（使用稍亮一点的颜色）
+      const brighterColor = this.brightenColor(colorHex, 1.2);
+      element.style.textShadow = `0 1px 2px ${brighterColor}`;
+    }
+  }
+
+  /**
+   * 将十六进制颜色转换为 RGB
+   * @param {string} hex - 十六进制颜色值
+   * @returns {Object|null} {r, g, b} 或 null
+   */
+  hexToRgb(hex) {
+    // 移除 # 号
+    const cleanHex = hex.replace("#", "");
+
+    // 处理3位和6位十六进制
+    const match =
+      cleanHex.length === 3
+        ? cleanHex.match(/^([a-f\d])([a-f\d])([a-f\d])$/i)
+        : cleanHex.match(/^([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i);
+
+    if (!match) {
+      console.warn(`无效的颜色值: ${hex}`);
+      return null;
+    }
+
+    return {
+      r:
+        cleanHex.length === 3
+          ? parseInt(match[1] + match[1], 16)
+          : parseInt(match[1], 16),
+      g:
+        cleanHex.length === 3
+          ? parseInt(match[2] + match[2], 16)
+          : parseInt(match[2], 16),
+      b:
+        cleanHex.length === 3
+          ? parseInt(match[3] + match[3], 16)
+          : parseInt(match[3], 16),
+    };
+  }
+
+  /**
+   * 增亮颜色
+   * @param {string} hex - 十六进制颜色值
+   * @param {number} factor - 增亮系数（>1为增亮，<1为变暗）
+   * @returns {string} 新的十六进制颜色值
+   */
+  brightenColor(hex, factor) {
+    const rgb = this.hexToRgb(hex);
+    if (!rgb) return hex;
+
+    const newR = Math.min(255, Math.round(rgb.r * factor));
+    const newG = Math.min(255, Math.round(rgb.g * factor));
+    const newB = Math.min(255, Math.round(rgb.b * factor));
+
+    return `#${newR.toString(16).padStart(2, "0")}${newG.toString(16).padStart(2, "0")}${newB.toString(16).padStart(2, "0")}`;
   }
 
   removeEventListener() {
