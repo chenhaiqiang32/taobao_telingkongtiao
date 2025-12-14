@@ -559,15 +559,6 @@ export const onMessage = async () => {
           }
           break;
         }
-        case "toggleDeviceLabels": {
-          // 切换设备牌子显示/隐藏（全局状态，无论室内室外都生效）
-          const show = event.data.param !== false; // 默认为true
-          console.log(`收到切换设备牌子显示指令: ${show ? "显示" : "隐藏"}`);
-
-          // 使用core的全局方法，会自动保存到localStorage并同步到室内子系统
-          core.setDeviceLabelsVisible(show);
-          break;
-        }
       }
     }
   });

@@ -40,9 +40,6 @@ export class Store3D extends CoreExtensions {
     this.ray = new THREE.Raycaster();
     this.inDoorModel = false; // 是否搜索了未建模的建筑
 
-    // 设备牌子显示状态（从localStorage读取，默认为true）
-    this.deviceLabelsVisible = this.loadDeviceLabelsState();
-
     const __position = Store3D.Default.position
       .clone()
       .applyAxisAngle(new THREE.Vector3(0, 1, 0), 45)
@@ -60,50 +57,6 @@ export class Store3D extends CoreExtensions {
 
   isIndoorModel() {
     return this.inDoorModel;
-  }
-
-  /**
-   * 从localStorage加载设备牌子显示状态
-   * @returns {boolean} 设备牌子显示状态，默认为true
-   */
-  loadDeviceLabelsState() {
-    try {
-      const saved = localStorage.getItem('deviceLabelsVisible');
-      if (saved !== null) {
-        return saved === 'true';
-      }
-    } catch (error) {
-      console.warn('无法从localStorage读取设备牌子显示状态:', error);
-    }
-    return true; // 默认显示
-  }
-
-  /**
-   * 保存设备牌子显示状态到localStorage
-   * @param {boolean} visible - 显示状态
-   */
-  saveDeviceLabelsState(visible) {
-    try {
-      localStorage.setItem('deviceLabelsVisible', String(visible));
-    } catch (error) {
-      console.warn('无法保存设备牌子显示状态到localStorage:', error);
-    }
-  }
-
-  /**
-   * 设置设备牌子显示/隐藏状态（全局）
-   * @param {boolean} visible - true显示，false隐藏
-   */
-  setDeviceLabelsVisible(visible) {
-    this.deviceLabelsVisible = visible;
-    // 保存到localStorage
-    this.saveDeviceLabelsState(visible);
-    console.log(`设备牌子显示状态已设置为: ${visible ? "显示" : "隐藏"}（已保存到本地）`);
-
-    // 如果当前在室内系统，立即应用状态
-    if (this.indoorSubsystem && this.currentSystem === this.indoorSubsystem) {
-      this.indoorSubsystem.setDeviceLabelsVisible(visible);
-    }
   }
 
   init() {

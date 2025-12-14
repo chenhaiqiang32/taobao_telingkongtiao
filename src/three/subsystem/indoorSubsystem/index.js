@@ -67,11 +67,6 @@ export class IndoorSubsystem extends CustomSystem {
     // 保存首次进入时的相机位置
     this.initialCameraPosition = null;
     this.initialControlsTarget = null;
-
-    // 设备牌子显示控制标志（从core读取全局状态）
-    this.deviceLabelsVisible = core.deviceLabelsVisible !== undefined 
-      ? core.deviceLabelsVisible 
-      : true;
   }
 
   async onEnter(buildingName) {
@@ -79,11 +74,6 @@ export class IndoorSubsystem extends CustomSystem {
 
     if (this.core.ground && this.core.ground.hideAllBuildingLabel) {
       this.core.ground.hideAllBuildingLabel();
-    }
-
-    // 从core同步设备牌子显示状态（确保使用最新的全局状态）
-    if (this.core.deviceLabelsVisible !== undefined) {
-      this.deviceLabelsVisible = this.core.deviceLabelsVisible;
     }
 
     // 设置室内相机控制参数
@@ -650,10 +640,8 @@ export class IndoorSubsystem extends CustomSystem {
             // 在楼层切换动画完成后加载设备标签数据
             this.loadAndRenderDeviceLabels();
 
-            // 根据标志决定是否显示当前楼层的标签
-            if (this.deviceLabelsVisible) {
-              this.showFloorLabels(floor);
-            }
+            // 显示当前楼层的标签
+            this.showFloorLabels(floor);
 
             // 确保在楼层切换完成后重新注册右键双击事件
             this.setupFloorRaycastEvents(floor);
@@ -883,10 +871,8 @@ export class IndoorSubsystem extends CustomSystem {
           // 在楼层内部切换完成后加载设备标签数据
           this.loadAndRenderDeviceLabels();
 
-          // 根据标志决定是否显示当前楼层的标签
-          if (this.deviceLabelsVisible) {
-            this.showFloorLabels(target);
-          }
+          // 显示当前楼层的标签
+          this.showFloorLabels(target);
 
           // 楼层内部切换完成，解析Promise
           resolve();
@@ -2523,10 +2509,8 @@ export class IndoorSubsystem extends CustomSystem {
             // 在楼层切换动画完成后加载设备标签数据
             this.loadAndRenderDeviceLabels();
 
-            // 根据标志决定是否显示当前楼层的标签
-            if (this.deviceLabelsVisible) {
-              this.showFloorLabels(floor);
-            }
+            // 显示当前楼层的标签
+            this.showFloorLabels(floor);
 
             // 注意：这里不重新设置射线检测事件，保持现有的事件监听
             this.sceneHint.updateMessage("右键双击恢复楼栋");
@@ -2602,10 +2586,8 @@ export class IndoorSubsystem extends CustomSystem {
           // 在楼层内部切换完成后加载设备标签数据
           this.loadAndRenderDeviceLabels();
 
-          // 根据标志决定是否显示当前楼层的标签
-          if (this.deviceLabelsVisible) {
-            this.showFloorLabels(target);
-          }
+          // 显示当前楼层的标签
+          this.showFloorLabels(target);
 
           // 重新注册右键双击事件，确保事件监听正常工作
           this.setupFloorRaycastEvents(target);
@@ -2618,24 +2600,5 @@ export class IndoorSubsystem extends CustomSystem {
           reject(error);
         });
     });
-  }
-
-  /**
-   * 设置设备牌子显示/隐藏状态
-   * @param {boolean} visible - true显示，false隐藏
-   */
-  setDeviceLabelsVisible(visible) {
-    this.deviceLabelsVisible = visible;
-    console.log(`设备牌子显示状态已设置为: ${visible ? "显示" : "隐藏"}`);
-
-    // 如果当前有楼层，立即更新显示状态
-    if (this.currentFloor && this.currentFloor.name) {
-      const floorName = this.currentFloor.name;
-      if (visible) {
-        this.showFloorLabels(floorName);
-      } else {
-        this.hideFloorLabels(floorName);
-      }
-    }
   }
 }
