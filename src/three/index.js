@@ -154,6 +154,7 @@ export class Store3D extends CoreExtensions {
   async changeIndoor(name) {
     // 根据传入的建筑名称从配置中获取对应的路径和楼层信息
     const buildingConfig = window.floorToName[name];
+    debugger;
 
     if (!buildingConfig) {
       console.warn(`未找到建筑 "${name}" 的配置信息`);

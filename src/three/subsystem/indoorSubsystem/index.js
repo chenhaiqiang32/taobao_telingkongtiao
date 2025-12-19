@@ -241,7 +241,8 @@ export class IndoorSubsystem extends CustomSystem {
                   font-size: 13px;
                   font-weight: 500;
                   // white-space: nowrap;
-                  // pointer-events: none;
+                  pointer-events: auto;
+                  cursor: pointer;
                   display: none;
                   // box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
                   border: 1px solid rgba(255, 255, 255, 0.2);
@@ -250,7 +251,32 @@ export class IndoorSubsystem extends CustomSystem {
                   letter-spacing: 0.5px;
                   position: relative;
                   overflow: hidden;
+                  user-select: none;
+                  transition: background 0.2s, border-color 0.2s;
                 `;
+
+          // 添加鼠标悬停效果
+          labelContainer.addEventListener("mouseenter", () => {
+            labelContainer.style.background = "linear-gradient(135deg, rgba(52, 152, 219, 0.2), rgba(41, 128, 185, 0.2))";
+            labelContainer.style.borderColor = "rgba(255, 255, 255, 0.4)";
+          });
+          
+          labelContainer.addEventListener("mouseleave", () => {
+            labelContainer.style.background = "linear-gradient(135deg, rgba(52, 152, 219, 0.1), rgba(41, 128, 185, 0.1))";
+            labelContainer.style.borderColor = "rgba(255, 255, 255, 0.2)";
+          });
+
+          // 添加点击事件
+          labelContainer.addEventListener("click", (e) => {
+            e.stopPropagation(); // 阻止事件冒泡
+            console.log(`点击牌子: ${labelName}`);
+            // 调用 changeIndoor 方法，传入牌子名称
+            if (this.core && this.core.changeIndoor) {
+              this.core.changeIndoor(labelName);
+            } else {
+              console.warn("无法调用 changeIndoor 方法：core 或 changeIndoor 不存在");
+            }
+          });
 
           // 添加发光效果
           labelContainer.innerHTML = `
