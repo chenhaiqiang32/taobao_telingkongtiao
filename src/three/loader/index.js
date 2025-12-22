@@ -79,13 +79,20 @@ class GlobalAnimationManager {
       // 更新材质流动动画
       this.materialFlows.forEach((flowData, material) => {
         if (material.map && material.map.offset) {
+          // 使用基于时间的速度，确保在不同帧率下效果一致
+          const timeDelta = delta;
           // 更新纹理偏移，实现流动效果
-          material.map.offset.x += flowData.speedX;
+          material.map.offset.x += flowData.speedX * timeDelta * 60; // 乘以60以补偿delta时间
 
           // 可选：当偏移值过大时重置，避免数值过大
           if (material.map.offset.x > 1) {
-            material.map.offset.x -= 1;
+            material.map.offset.x -= 0.1;
+          } else if (material.map.offset.x < -1) {
+            material.map.offset.x += 0.1;
           }
+          
+          // 确保材质更新
+          material.map.needsUpdate = true;
         }
       });
     }
