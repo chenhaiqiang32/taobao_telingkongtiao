@@ -1383,7 +1383,7 @@ export class IndoorSubsystem extends CustomSystem {
     this.materialFlowObjects.forEach((material) => {
       if (material.map && material.map.offset) {
         // 不断增加 offset.x 的值，实现流动效果
-        material.map.offset.x += 0.00068; // 可以根据需要调整速度
+        material.map.offset.x += 0.00032 // 可以根据需要调整速度
         
         // 当偏移值过大时重置，避免数值过大
         if (material.map.offset.x > 1) {
