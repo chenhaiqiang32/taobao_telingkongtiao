@@ -70,9 +70,6 @@ export class IndoorSubsystem extends CustomSystem {
     // 保存首次进入时的相机位置
     this.initialCameraPosition = null;
     this.initialControlsTarget = null;
-
-    // 存储需要材质流动的对象
-    this.materialFlowObjects = [];
   }
 
   async onEnter(buildingName) {
@@ -402,9 +399,6 @@ export class IndoorSubsystem extends CustomSystem {
       // 设置纹理为重复模式，这样才能看到流动效果
       child.material.map.wrapS = THREE.RepeatWrapping;
       child.material.map.wrapT = THREE.RepeatWrapping;
-      
-      // 将材质添加到流动对象数组中
-      this.materialFlowObjects.push(child.material);
       
       console.log(`已为材质 ${child.name} 添加流动效果`);
     }
@@ -1378,19 +1372,6 @@ export class IndoorSubsystem extends CustomSystem {
     if (this.boxModelGround) {
       this.boxModelGround.update(this.core.elapsedTime);
     }
-
-    // 更新材质流动效果
-    this.materialFlowObjects.forEach((material) => {
-      if (material.map && material.map.offset) {
-        // 不断增加 offset.x 的值，实现流动效果
-        material.map.offset.x += 0.00032 // 可以根据需要调整速度
-        
-        // 当偏移值过大时重置，避免数值过大
-        if (material.map.offset.x > 1) {
-          material.map.offset.x -= 1;
-        }
-      }
-    });
   }
 
   /**
