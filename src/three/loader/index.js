@@ -48,15 +48,98 @@ setupMeshoptDecoder();
 // 全局动画管理器
 class GlobalAnimationManager {
   constructor() {
-    this.mixers = new Map();
+    // 按动画名称存储动画信息：{ mixer, action, isPlaying }
+    this.animations = new Map();
     this.materialFlows = new Map(); // 存储材质流动动画
     this.clock = new THREE.Clock();
     this.isPlaying = false;
   }
 
-  addMixer(model, mixer) {
-    this.mixers.set(model, mixer);
+  /**
+   * 添加动画到管理器（不自动播放）
+   * @param {string} animationName - 动画名称
+   * @param {THREE.AnimationMixer} mixer - 动画混合器
+   * @param {THREE.AnimationAction} action - 动画动作
+   */
+  addAnimation(animationName, mixer, action) {
+    // 如果动画名称已存在，使用唯一名称
+    let uniqueName = animationName;
+    let counter = 1;
+    while (this.animations.has(uniqueName)) {
+      uniqueName = `${animationName}_${counter}`;
+      counter++;
+    }
+
+    this.animations.set(uniqueName, {
+      mixer: mixer,
+      action: action,
+      isPlaying: false,
+    });
     this.clock.start();
+    
+    return uniqueName; // 返回实际使用的名称（可能被修改为唯一名称）
+  }
+
+  /**
+   * 播放指定名称的动画（如果已暂停则恢复播放）
+   * @param {string} animationName - 动画名称
+   */
+  playAnimation(animationName) {
+    const animation = this.animations.get(animationName);
+    if (animation) {
+      animation.action.play();
+      animation.action.paused = false; // 确保未暂停
+      animation.isPlaying = true;
+      this.isPlaying = true; // 确保全局更新循环运行
+    } else {
+      console.warn(`⚠️ 动画 "${animationName}" 不存在`);
+    }
+  }
+
+  /**
+   * 暂停指定名称的动画
+   * @param {string} animationName - 动画名称
+   */
+  pauseAnimation(animationName) {
+    const animation = this.animations.get(animationName);
+    if (animation) {
+      animation.action.paused = true;
+      animation.isPlaying = false;
+    } else {
+      console.warn(`⚠️ 动画 "${animationName}" 不存在`);
+    }
+  }
+
+  /**
+   * 停止指定名称的动画（重置到开始）
+   * @param {string} animationName - 动画名称
+   */
+  stopAnimation(animationName) {
+    const animation = this.animations.get(animationName);
+    if (animation) {
+      animation.action.stop();
+      animation.isPlaying = false;
+    } else {
+      console.warn(`⚠️ 动画 "${animationName}" 不存在`);
+    }
+  }
+
+  /**
+   * 获取动画是否正在播放
+   * @param {string} animationName - 动画名称
+   * @returns {boolean}
+   */
+  isAnimationPlaying(animationName) {
+    const animation = this.animations.get(animationName);
+    return animation ? animation.isPlaying : false;
+  }
+
+  /**
+   * 获取所有动画名称列表
+   * @returns {string[]}
+   */
+  getAnimationNames() {
+    return Array.from(this.animations.keys());
   }
 
   addMaterialFlow(material, speedX) {
@@ -68,34 +151,40 @@ class GlobalAnimationManager {
   }
 
   update() {
-    if (this.isPlaying) {
-      const delta = this.clock.getDelta();
+    const delta = this.clock.getDelta();
 
-      // 更新动画mixer
-      this.mixers.forEach((mixer) => {
-        mixer.update(delta);
-      });
+    // 收集需要更新的mixer（避免同一个mixer被更新多次）
+    const mixersToUpdate = new Set();
+    this.animations.forEach((animationData) => {
+      if (animationData.isPlaying && !animationData.action.paused) {
+        mixersToUpdate.add(animationData.mixer);
+      }
+    });
 
-      // 更新材质流动动画
-      this.materialFlows.forEach((flowData, material) => {
-        if (material.map && material.map.offset) {
-          // 使用基于时间的速度，确保在不同帧率下效果一致
-          const timeDelta = delta;
-          // 更新纹理偏移，实现流动效果
-          material.map.offset.x += flowData.speedX * timeDelta * 60; // 乘以60以补偿delta时间
+    // 更新所有需要更新的mixer
+    mixersToUpdate.forEach((mixer) => {
+      mixer.update(delta);
+    });
 
-          // 可选：当偏移值过大时重置，避免数值过大
-          if (material.map.offset.x > 1) {
-            material.map.offset.x -= 0.1;
-          } else if (material.map.offset.x < -1) {
-            material.map.offset.x += 0.1;
-          }
-          
-          // 确保材质更新
-          material.map.needsUpdate = true;
-        }
-      });
-    }
+    // 更新材质流动动画（如果需要全局控制，可以添加条件）
+    this.materialFlows.forEach((flowData, material) => {
+      if (material.map && material.map.offset) {
+        // 使用基于时间的速度，确保在不同帧率下效果一致
+        const timeDelta = delta;
+        // 更新纹理偏移，实现流动效果
+        material.map.offset.x += flowData.speedX * timeDelta * 60; // 乘以60以补偿delta时间
+
+        // 可选：当偏移值过大时重置，避免数值过大
+        // if (material.map.offset.x > 1) {
+        //   material.map.offset.x -= 0.1;
+        // } else if (material.map.offset.x < -1) {
+        //   material.map.offset.x += 0.1;
+        // }
+        
+        // 确保材质更新
+        material.map.needsUpdate = true;
+      }
+    });
   }
 
   play() {
@@ -125,24 +214,27 @@ function handleModelAnimations(gltf, model) {
   if (gltf.animations && gltf.animations.length > 0) {
     const mixer = new THREE.AnimationMixer(model);
 
-    // 将所有动画添加到mixer并自动播放
+    // 将所有动画添加到mixer，但不自动播放，按名称存储到管理器
     gltf.animations.forEach((clip) => {
       const action = mixer.clipAction(clip);
       action.setLoop(THREE.LoopRepeat);
       action.clampWhenFinished = true;
-      action.play(); // 自动播放所有动画
+      // 不自动播放，只存储到管理器
+
+      // 使用动画clip的名称，如果没有名称则使用默认名称
+      const animationName = clip.name || `animation_${model.name || "unnamed"}_${gltf.animations.indexOf(clip)}`;
+      const actualName = globalAnimationManager.addAnimation(animationName, mixer, action);
+      
+      console.log(`✅ 动画 "${actualName}", "${animationName}", 已添加到管理器（未自动播放）`);
     });
 
-    // 将mixer添加到全局动画管理器
-    globalAnimationManager.addMixer(model, mixer);
-
-    // 启动全局动画播放
+    // 启动全局动画更新循环（但不播放任何动画）
     globalAnimationManager.play();
 
     console.log(
       `✅ 模型 ${model.name || "unnamed"} 的 ${
         gltf.animations.length
-      } 个动画已自动播放`
+      } 个动画已添加到管理器，可使用 playAnimation(name) 方法播放`
     );
   }
 
