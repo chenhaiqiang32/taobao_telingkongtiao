@@ -31,4 +31,16 @@ window.floorToName = {
     path: "inDoor/A001B002",
     floor: "F01",
   },
+  'accl-250t-1': {
+    path: "inDoor/accl-250t-1",
+    floor: "F01",
+  },
+  'psy-20t-1': {
+    path: "inDoor/psy-20t-1",
+    floor: "F01",
+  },
+  'wccl-3000t-1': {
+    path: "inDoor/wccl-3000t-1",
+    floor: "F01",
+  },
 };
