@@ -8,7 +8,7 @@ import { getBoxCenter } from "../../../lib/box3Fun";
 import { lightIndexUpdate, lightIndexReset } from "../../../shader/funs";
 import { createCSS2DObject } from "../../../lib/CSSObject";
 
-import { changeIndoor, web3dSelectCode } from "../../../message/postMessage";
+import { changeIndoor, web3dSelectCode, web3dLabelClick } from "../../../message/postMessage";
 import EquipmentPlate from "../../components/business/equipMentPlate";
 import { SunnyTexture } from "../../components/weather";
 import { SpecialGround } from "../../../lib/blMeshes";
@@ -280,6 +280,8 @@ export class IndoorSubsystem extends CustomSystem {
           labelContainer.addEventListener("click", (e) => {
             e.stopPropagation(); // 阻止事件冒泡
             console.log(`点击牌子: ${labelName}`);
+            // 通知前端点击的牌子编号
+            web3dLabelClick(labelName);
             // 调用 changeIndoor 方法，传入牌子名称
             if (this.core && this.core.changeIndoor) {
               this.core.changeIndoor(labelName);

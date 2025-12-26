@@ -127,3 +127,14 @@ export const web3dSelectCode = (id) => {
     "*"
   );
 };
+
+export const web3dLabelClick = (labelCode) => {
+  // 通知前端点击的牌子编号
+  window.parent.postMessage(
+    {
+      cmd: "web3dDesignLabelClick",
+      param: labelCode, // 牌子编号
+    },
+    "*"
+  );
+};
