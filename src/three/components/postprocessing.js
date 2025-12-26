@@ -82,8 +82,8 @@ export class Postprocessing {
       edgeStrength: 3,
       patternScale: 5,
       // pulseSpeed: 0.2,
-      visibleEdgeColor: 0x00ced1,
-      hiddenEdgeColor: 0x00ced1,
+      visibleEdgeColor: 0x90ee90, // 淡绿色 (LightGreen)
+      hiddenEdgeColor: 0x90ee90, // 淡绿色 (LightGreen)
       blur: false,
       xRay: true,
       usePatternTexture: false,

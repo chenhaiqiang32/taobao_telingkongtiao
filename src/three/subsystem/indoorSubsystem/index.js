@@ -16,6 +16,7 @@ import BoxModel from "../../../lib/boxModel";
 import { dynamicFade, fadeByTime } from "../../../shader";
 import { SceneHint } from "../../components/SceneHint";
 import { equipmentTreeManager } from "./equipmentTreeManager";
+import { globalAnimationManager } from "../../loader";
 
 let rightMouseupTime = 0;
 let rightClickTime = 0; // 添加全局的右键点击时间戳
@@ -48,6 +49,12 @@ export class IndoorSubsystem extends CustomSystem {
     // 初始化标签存储对象（按楼层存储）
     this.simpleLabel = {};
 
+    // 初始化工艺模型标签存储对象（按楼层存储）
+    this.processModelLabel = {};
+
+    // 工艺牌子弹窗元素
+    this.processPlateModal = null;
+
     // 建筑
     this.building = null;
     this.buildingName = null;
@@ -63,6 +70,9 @@ export class IndoorSubsystem extends CustomSystem {
 
     // 工艺设计数据存储（全局存储，按 code 索引）
     this.designDataMap = {};
+
+    // 待处理的工艺模型数据（模型未加载时存储，加载后应用）
+    this.pendingModelData = {};
 
     // 初始化场景提示
     this.sceneHint = new SceneHint();
@@ -327,8 +337,96 @@ export class IndoorSubsystem extends CustomSystem {
             css2dObject: css2dObject,
             deviceObject: ichild,
           };
+        } else if (ichild.name.includes("_model")) {
+          // 工艺模型处理
+          this.simpleInsert[child.name].push(ichild);
+          let modelName = ichild.name.split("_model")[0];
+          const floorName = child.name; // 楼层名称
+          
+          // 初始化楼层工艺模型标签对象
+          if (!this.processModelLabel[floorName]) {
+            this.processModelLabel[floorName] = {};
+          }
+          
+          // 创建CSS2D标签
+          const labelContainer = document.createElement("div");
+          labelContainer.className = "process-model-label-container";
+          labelContainer.style.cssText = `
+                  background: linear-gradient(135deg, rgba(52, 152, 219, 0.1), rgba(41, 128, 185, 0.1));
+                  color: white;
+                  padding: 2px 4px;
+                  border-radius: 8px;
+                  font-size: 13px;
+                  font-weight: 500;
+                  pointer-events: auto;
+                  cursor: pointer;
+                  display: none;
+                  border: 1px solid rgba(255, 255, 255, 0.2);
+                  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+                  letter-spacing: 0.5px;
+                  position: relative;
+                  overflow: hidden;
+                  user-select: none;
+                  transition: background 0.2s, border-color 0.2s;
+                `;
+
+          // 添加鼠标悬停效果
+          labelContainer.addEventListener("mouseenter", () => {
+            labelContainer.style.background = "linear-gradient(135deg, rgba(52, 152, 219, 0.2), rgba(41, 128, 185, 0.2))";
+            labelContainer.style.borderColor = "rgba(255, 255, 255, 0.4)";
+          });
+          
+          labelContainer.addEventListener("mouseleave", () => {
+            labelContainer.style.background = "linear-gradient(135deg, rgba(52, 152, 219, 0.1), rgba(41, 128, 185, 0.1))";
+            labelContainer.style.borderColor = "rgba(255, 255, 255, 0.2)";
+          });
+
+          // 添加点击事件 - 显示工艺牌子
+          labelContainer.addEventListener("click", (e) => {
+            e.stopPropagation(); // 阻止事件冒泡
+            console.log(`点击工艺模型: ${modelName}`);
+            this.showProcessPlate(modelName, ichild);
+          });
+
+          // 添加发光效果
+          labelContainer.innerHTML = `
+                  <div style="
+                    position: absolute;
+                    top: 0;
+                    left: -100%;
+                    width: 100%;
+                    height: 100%;
+                    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+                    animation: shimmer 2s infinite;
+                  "></div>
+                  <span style="position: relative; z-index: 1;">${modelName}</span>
+                `;
+
+          // 创建CSS2D对象
+          const css2dObject = createCSS2DObject(
+            labelContainer,
+            `process-model-label-${modelName}`
+          );
+
+          // 获取ichild的世界坐标
+          const worldPosition = new THREE.Vector3();
+          ichild.getWorldPosition(worldPosition);
+          css2dObject.position.copy(worldPosition);
+          css2dObject.visible = false; // 默认隐藏
+          css2dObject.center.set(0.5, 1);
+
+          // 添加到场景
+          this.scene.add(css2dObject);
+
+          // 按楼层名称存储工艺模型标签引用
+          this.processModelLabel[floorName][modelName] = {
+            element: labelContainer,
+            css2dObject: css2dObject,
+            deviceObject: ichild,
+          };
         }
       });
+      console.log(`工艺模型标签存储对象: ${this.processModelLabel}`);
     });
 
     const group = gltf.scene;
@@ -435,7 +533,7 @@ export class IndoorSubsystem extends CustomSystem {
     if (this.core && this.core.onRenderQueue) {
       this.core.onRenderQueue.set("indoorSubsystem", this.update.bind(this));
     }
-
+     console.log(this.processModelLabel, "this.processModelLabel");
     console.log("=== 首次进入室内 - onLoaded ===");
     console.log("当前相机位置:", this.camera.position);
     console.log("当前controls.target:", this.controls.target);
@@ -445,6 +543,9 @@ export class IndoorSubsystem extends CustomSystem {
     this.initialControlsTarget = this.controls.target.clone();
     console.log("保存的初始相机位置:", this.initialCameraPosition);
     console.log("保存的初始controls.target:", this.initialControlsTarget);
+
+    // 模型加载完成后，比对并应用待处理的数据
+    this.applyAllPendingModelData();
 
     this.cameraMove(this.building);
     this.addEventListener();
@@ -1026,6 +1127,9 @@ export class IndoorSubsystem extends CustomSystem {
 
     // 清理切换标签
     this.clearQiehuanLabels();
+
+    // 清理工艺牌子弹窗
+    this.hideProcessPlate();
 
     // 清理工艺设计数据存储
     this.designDataMap = {};
@@ -2353,6 +2457,8 @@ export class IndoorSubsystem extends CustomSystem {
       });
       console.log(`显示楼层 ${floorName} 的所有切换标签`);
     }
+    // 同时显示工艺模型标签
+    this.showProcessModelLabels(floorName);
   }
 
   /**
@@ -2366,6 +2472,8 @@ export class IndoorSubsystem extends CustomSystem {
       });
       console.log(`隐藏楼层 ${floorName} 的所有切换标签`);
     }
+    // 同时隐藏工艺模型标签
+    this.hideProcessModelLabels(floorName);
   }
 
   /**
@@ -2405,6 +2513,8 @@ export class IndoorSubsystem extends CustomSystem {
     });
     this.simpleLabel = {};
     console.log("清理所有切换标签");
+    // 同时清理工艺模型标签
+    this.clearProcessModelLabels();
   }
 
   /**
@@ -2956,5 +3066,526 @@ export class IndoorSubsystem extends CustomSystem {
           reject(error);
         });
     });
+  }
+
+  /**
+   * 显示工艺牌子
+   * @param {string} modelName - 工艺模型名称
+   * @param {THREE.Object3D} deviceObject - 设备对象
+   */
+  showProcessPlate(modelName, deviceObject) {
+    // 从存储的数据中查找对应的工艺数据
+    const processData = this.findProcessDataByModelName(modelName);
+    
+    // 创建或更新工艺牌子弹窗
+    this.createOrUpdateProcessPlateModal(processData, modelName);
+  }
+
+  /**
+   * 根据模型名称查找工艺数据
+   * @param {string} modelName - 模型名称
+   * @returns {Object|null} 工艺数据
+   */
+  findProcessDataByModelName(modelName) {
+    // 从 designDataMap 中查找匹配的数据
+    // 这里假设 modelName 对应 code，或者需要通过其他方式匹配
+    if (this.designDataMap && this.designDataMap[modelName]) {
+      return this.designDataMap[modelName];
+    }
+    
+    // 如果没有找到，返回默认数据结构
+    return {
+      code: modelName,
+      name: modelName,
+      status: 1,
+      attribute: []
+    };
+  }
+
+  /**
+   * 存储工艺模型状态数据（用于工艺牌子显示）
+   * @param {string} code - 设备编号
+   * @param {Object} data - 工艺数据 {code, name, status, attribute}
+   */
+  storeProcessModelData(code, data) {
+    if (!this.designDataMap) {
+      this.designDataMap = {};
+    }
+    this.designDataMap[code] = data;
+  }
+
+  /**
+   * 创建或更新工艺牌子弹窗
+   * @param {Object} processData - 工艺数据 {code, name, status, attribute}
+   * @param {string} modelName - 模型名称
+   */
+  createOrUpdateProcessPlateModal(processData, modelName) {
+    // 如果弹窗已存在，先移除
+    if (this.processPlateModal) {
+      this.processPlateModal.remove();
+      this.processPlateModal = null;
+    }
+
+    const { code, name, status, attribute = [] } = processData;
+
+    // 创建弹窗容器
+    const modal = document.createElement("div");
+    modal.className = "process-plate-modal";
+    modal.dataset.code = code; // 添加code标识，便于更新时查找
+    modal.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 500px;
+      max-width: 90vw;
+      max-height: 80vh;
+      background: linear-gradient(135deg, rgba(30, 40, 60, 0.95), rgba(20, 30, 50, 0.95));
+      border: 1px solid rgba(100, 150, 200, 0.3);
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(10px);
+      z-index: 10000;
+      overflow: hidden;
+      color: white;
+      font-family: 'Microsoft YaHei', Arial, sans-serif;
+    `;
+
+    // 创建标题栏
+    const header = document.createElement("div");
+    header.style.cssText = `
+      background: linear-gradient(135deg, rgba(52, 152, 219, 0.3), rgba(41, 128, 185, 0.3));
+      padding: 12px 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    `;
+
+    const titleIcon = document.createElement("div");
+    titleIcon.style.cssText = `
+      width: 20px;
+      height: 20px;
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 4px;
+      margin-right: 10px;
+      display: inline-block;
+    `;
+
+    const titleText = document.createElement("div");
+    titleText.textContent = name || modelName;
+    titleText.style.cssText = `
+      font-size: 18px;
+      font-weight: 600;
+      flex: 1;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    `;
+
+    const closeBtn = document.createElement("div");
+    closeBtn.textContent = "×";
+    closeBtn.style.cssText = `
+      width: 24px;
+      height: 24px;
+      line-height: 24px;
+      text-align: center;
+      cursor: pointer;
+      font-size: 24px;
+      color: rgba(255, 255, 255, 0.8);
+      transition: color 0.2s;
+    `;
+    closeBtn.addEventListener("mouseenter", () => {
+      closeBtn.style.color = "rgba(255, 255, 255, 1)";
+    });
+    closeBtn.addEventListener("mouseleave", () => {
+      closeBtn.style.color = "rgba(255, 255, 255, 0.8)";
+    });
+    closeBtn.addEventListener("click", () => {
+      this.hideProcessPlate();
+    });
+
+    header.appendChild(titleIcon);
+    header.appendChild(titleText);
+    header.appendChild(closeBtn);
+
+    // 创建内容区域
+    const content = document.createElement("div");
+    content.style.cssText = `
+      padding: 20px;
+      max-height: calc(80vh - 60px);
+      overflow-y: auto;
+    `;
+
+    // 添加设备编号
+    if (code) {
+      const codeItem = document.createElement("div");
+      codeItem.style.cssText = `
+        margin-bottom: 12px;
+        font-size: 14px;
+        line-height: 1.6;
+      `;
+      codeItem.innerHTML = `<span style="color: rgba(255, 255, 255, 0.7);">设备编号：</span><span>${code}</span>`;
+      content.appendChild(codeItem);
+    }
+
+    // 添加设备状态
+    const statusItem = document.createElement("div");
+    statusItem.style.cssText = `
+      margin-bottom: 12px;
+      font-size: 14px;
+      line-height: 1.6;
+    `;
+    const statusText = status === 1 ? "开启" : status === 2 ? "关闭" : "未知";
+    const statusColor = status === 1 ? "rgba(0, 255, 0, 0.8)" : status === 2 ? "rgba(255, 0, 0, 0.8)" : "rgba(255, 255, 255, 0.5)";
+    statusItem.innerHTML = `<span style="color: rgba(255, 255, 255, 0.7);">设备状态：</span><span style="color: ${statusColor};">${statusText}</span>`;
+    content.appendChild(statusItem);
+
+    // 添加设备属性列表
+    if (attribute && attribute.length > 0) {
+      const attributeTitle = document.createElement("div");
+      attributeTitle.textContent = "设备属性";
+      attributeTitle.style.cssText = `
+        margin-top: 20px;
+        margin-bottom: 12px;
+        font-size: 16px;
+        font-weight: 600;
+        color: rgba(255, 255, 255, 0.9);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        padding-bottom: 8px;
+      `;
+      content.appendChild(attributeTitle);
+
+      attribute.forEach((attr) => {
+        const attrItem = document.createElement("div");
+        attrItem.style.cssText = `
+          margin-bottom: 10px;
+          font-size: 14px;
+          line-height: 1.8;
+          padding-left: 12px;
+          border-left: 2px solid rgba(52, 152, 219, 0.5);
+        `;
+        const value = attr.value !== undefined && attr.value !== null ? attr.value : "-";
+        attrItem.innerHTML = `<span style="color: rgba(255, 255, 255, 0.7);">${attr.key}：</span><span>${value}</span>`;
+        content.appendChild(attrItem);
+      });
+    } else {
+      const noAttribute = document.createElement("div");
+      noAttribute.textContent = "暂无设备属性";
+      noAttribute.style.cssText = `
+        margin-top: 20px;
+        color: rgba(255, 255, 255, 0.5);
+        font-size: 14px;
+        text-align: center;
+        padding: 20px;
+      `;
+      content.appendChild(noAttribute);
+    }
+
+    // 组装弹窗
+    modal.appendChild(header);
+    modal.appendChild(content);
+
+    // 添加到页面
+    document.body.appendChild(modal);
+    this.processPlateModal = modal;
+
+    // 点击背景关闭（可选）
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) {
+        this.hideProcessPlate();
+      }
+    });
+  }
+
+  /**
+   * 隐藏工艺牌子
+   */
+  hideProcessPlate() {
+    if (this.processPlateModal) {
+      this.processPlateModal.remove();
+      this.processPlateModal = null;
+    }
+  }
+
+  /**
+   * 显示指定楼层的工艺模型标签
+   * @param {string} floorName - 楼层名称
+   */
+  showProcessModelLabels(floorName) {
+    if (this.processModelLabel[floorName]) {
+      Object.keys(this.processModelLabel[floorName]).forEach((modelName) => {
+        const label = this.processModelLabel[floorName][modelName];
+        if (label && label.css2dObject) {
+          label.css2dObject.visible = true;
+          label.element.style.display = "block";
+        }
+      });
+      console.log(`显示楼层 ${floorName} 的所有工艺模型标签`);
+    }
+  }
+
+  /**
+   * 隐藏指定楼层的工艺模型标签
+   * @param {string} floorName - 楼层名称
+   */
+  hideProcessModelLabels(floorName) {
+    if (this.processModelLabel[floorName]) {
+      Object.keys(this.processModelLabel[floorName]).forEach((modelName) => {
+        const label = this.processModelLabel[floorName][modelName];
+        if (label && label.css2dObject) {
+          label.css2dObject.visible = false;
+          label.element.style.display = "none";
+        }
+      });
+      console.log(`隐藏楼层 ${floorName} 的所有工艺模型标签`);
+    }
+  }
+
+  /**
+   * 清理所有工艺模型标签
+   */
+  clearProcessModelLabels() {
+    Object.keys(this.processModelLabel).forEach((floorName) => {
+      Object.keys(this.processModelLabel[floorName]).forEach((modelName) => {
+        const label = this.processModelLabel[floorName][modelName];
+        if (label) {
+          if (label.element) {
+            label.element.remove();
+          }
+          if (label.css2dObject) {
+            this.scene.remove(label.css2dObject);
+          }
+        }
+      });
+    });
+    this.processModelLabel = {};
+    console.log("清理所有工艺模型标签");
+  }
+
+  /**
+   * 从 processModelLabel 中查找工艺模型
+   * @param {string} code - 设备编号
+   * @returns {Object|null} {labelInfo, floorName, modelName} 或 null
+   */
+  findProcessModelByCode(code) {
+    let foundModel = null;
+    let foundFloor = null;
+    let foundModelName = null;
+
+    // 遍历所有楼层的工艺模型标签
+    Object.keys(this.processModelLabel).forEach((floorName) => {
+      Object.keys(this.processModelLabel[floorName]).forEach((modelName) => {
+        const labelInfo = this.processModelLabel[floorName][modelName];
+        if (labelInfo && labelInfo.deviceObject) {
+          const deviceObj = labelInfo.deviceObject;
+          // 检查设备对象的名称是否匹配code
+          let deviceCode = deviceObj.name;
+          if (deviceObj.name.includes("_model")) {
+            deviceCode = deviceObj.name.split("_model")[0];
+          } else if (deviceObj.name.includes("_")) {
+            deviceCode = deviceObj.name.split("_")[0];
+          }
+          
+          if (deviceCode === code || modelName === code) {
+            foundModel = labelInfo;
+            foundFloor = floorName;
+            foundModelName = modelName;
+          }
+        }
+      });
+    });
+
+    return foundModel ? { labelInfo: foundModel, floorName: foundFloor, modelName: foundModelName } : null;
+  }
+
+  /**
+   * 应用单个工艺模型数据
+   * @param {string} code - 设备编号
+   * @param {Object} modelData - 模型数据 {name, status, attribute}
+   * @param {Object} foundResult - 查找结果 {labelInfo, floorName, modelName}
+   */
+  applyProcessModelData(code, modelData, foundResult) {
+    const { name, status, attribute = [] } = modelData;
+    
+    if (foundResult && foundResult.labelInfo) {
+      // 找到模型，直接应用
+      const { labelInfo } = foundResult;
+      
+      // 更新模型颜色和动画
+      this.updateModelColorAndAnimation(labelInfo.deviceObject, code, status);
+      
+      // 更新存储的数据（用于工艺牌子显示）
+      const existingData = this.designDataMap[code] || {};
+      this.designDataMap[code] = {
+        code,
+        name: name || existingData.name || code,
+        status,
+        attribute: attribute.length > 0 ? attribute : (existingData.attribute || [])
+      };
+
+      // 如果工艺牌子弹窗正在显示，更新它
+      if (this.processPlateModal && this.processPlateModal.dataset.code === code) {
+        this.createOrUpdateProcessPlateModal(this.designDataMap[code], code);
+      }
+
+      console.log(`工艺模型 ${code} 状态更新完成: status=${status}, attribute数量=${attribute.length}`);
+    } else {
+      // 未找到模型，存储到待处理数据
+      this.pendingModelData[code] = {
+        code,
+        name: name || code,
+        status,
+        attribute
+      };
+      console.log(`工艺模型 ${code} 未找到，数据已存储到待处理列表，将在模型加载后自动应用`);
+    }
+  }
+
+  /**
+   * 应用所有待处理的工艺模型数据（在模型加载完成后调用）
+   */
+  applyAllPendingModelData() {
+    if (!this.pendingModelData || Object.keys(this.pendingModelData).length === 0) {
+      return;
+    }
+
+    console.log("开始比对并应用待处理的工艺模型数据...");
+    console.log("待处理数据:", this.pendingModelData);
+    console.log("已加载的工艺模型:", this.processModelLabel);
+
+    // 遍历所有待处理的数据
+    Object.keys(this.pendingModelData).forEach((code) => {
+      const pendingData = this.pendingModelData[code];
+      if (!pendingData) return;
+
+      // 从 processModelLabel 中查找对应的模型
+      const foundResult = this.findProcessModelByCode(pendingData.code);
+      
+      if (foundResult) {
+        console.log(`找到待处理数据对应的模型 ${pendingData.code}，开始应用`);
+        // 应用数据
+        this.applyProcessModelData(pendingData.code, pendingData, foundResult);
+        
+        // 从待处理列表中移除
+        delete this.pendingModelData[code];
+      } else {
+        console.log(`待处理数据 ${pendingData.code} 对应的模型尚未加载，保留在待处理列表`);
+      }
+    });
+
+    console.log("待处理数据比对完成，剩余待处理数据:", Object.keys(this.pendingModelData).length);
+  }
+
+  /**
+   * 更新工艺模型状态（颜色、动画、属性）
+   * @param {Array} modelData - 模型数据数组 [{code, name, status, attribute}]
+   */
+  updateModelStatus(modelData) {
+    if (!Array.isArray(modelData)) {
+      console.warn("updateModelStatus 参数格式错误，应为数组");
+      return;
+    }
+
+    console.log("开始更新工艺模型状态，数据:", modelData);
+
+    modelData.forEach((model) => {
+      const { code, name, status, attribute = [] } = model;
+
+      if (!code) {
+        console.warn("模型数据缺少 code 字段:", model);
+        return;
+      }
+
+      // 从 processModelLabel 中查找模型
+      const foundResult = this.findProcessModelByCode(code);
+      
+      // 应用数据（如果找不到会存储到待处理列表）
+      this.applyProcessModelData(code, { name, status, attribute }, foundResult);
+    });
+
+    console.log("工艺模型状态更新完成");
+  }
+
+  /**
+   * 更新模型颜色和动画
+   * @param {THREE.Object3D} deviceObject - 设备对象
+   * @param {string} code - 设备编号
+   * @param {number} status - 状态 1=开启 2=关闭
+   */
+  updateModelColorAndAnimation(deviceObject, code, status) {
+    if (!deviceObject) return;
+
+    // 获取所有已注册的动画名称
+    const allAnimations = globalAnimationManager.getAnimationNames();
+    console.log(`设备 ${code} 查找动画，所有可用动画:`, allAnimations);
+    console.log(`设备对象名称: ${deviceObject.name}`);
+
+    // 控制动画 - 尝试多种可能的动画名称
+    const possibleAnimationNames = [
+      code,
+      deviceObject.name,
+      deviceObject.name.split("_model")[0],
+      deviceObject.name.split("_")[0],
+      `animation_${deviceObject.name}`,
+      `animation_${code}`
+    ];
+
+    // 也尝试查找包含设备名称的动画（部分匹配）
+    const partialMatches = allAnimations.filter(animName => {
+      const deviceCode = deviceObject.name.split("_model")[0] || deviceObject.name.split("_")[0] || deviceObject.name;
+      return animName.includes(deviceCode) || animName.includes(code) || deviceCode.includes(animName);
+    });
+
+    // 合并所有可能的动画名称
+    const allPossibleNames = [...possibleAnimationNames, ...partialMatches];
+
+    let animationFound = false;
+    for (const animationName of allPossibleNames) {
+      if (allAnimations.includes(animationName)) {
+        if (status === 1) {
+          // 开启：播放动画
+          
+          globalAnimationManager.playAnimation(animationName);
+          console.log(`✅ 成功播放动画: ${animationName} (设备: ${code})`);
+          
+          // 验证动画是否真的在播放
+          setTimeout(() => {
+            const isPlaying = globalAnimationManager.isAnimationPlaying(animationName);
+            console.log(`动画 ${animationName} 播放状态: ${isPlaying}`);
+          }, 100);
+        } else if (status === 2) {
+          // 关闭：暂停动画
+          globalAnimationManager.pauseAnimation(animationName);
+          console.log(`✅ 成功暂停动画: ${animationName} (设备: ${code})`);
+        }
+        animationFound = true;
+        break;
+      }
+    }
+
+    if (!animationFound) {
+      console.warn(`⚠️ 未找到设备 ${code} 的动画`);
+      console.log(`尝试过的动画名称:`, allPossibleNames);
+      console.log(`可用的动画名称:`, allAnimations);
+      
+      // 如果没找到精确匹配，尝试模糊匹配（包含设备名称的动画）
+      if (allAnimations.length > 0) {
+        console.log(`提示: 请检查动画名称是否与设备编号 "${code}" 或设备名称 "${deviceObject.name}" 匹配`);
+      }
+    }
+
+    // 控制轮廓效果（模型周围一圈绿色）
+    if (status === 1) {
+      // 开启：添加绿色轮廓效果（只显示轮廓，不修改材质）
+      if (this.core && this.core.postprocessing) {
+        // 使用 channel 2 来显示绿色轮廓
+        // 注意：需要在 postprocessing 中配置 channel 2 为绿色
+        this.core.postprocessing.addOutline(deviceObject, 2);
+      }
+    } else if (status === 2) {
+      // 关闭：清除轮廓效果
+      if (this.core && this.core.postprocessing) {
+        this.core.postprocessing.clearOutline(deviceObject, 2);
+      }
+    }
   }
 }

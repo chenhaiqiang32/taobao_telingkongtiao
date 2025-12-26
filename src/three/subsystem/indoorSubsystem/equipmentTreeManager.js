@@ -1,4 +1,5 @@
-import { loadGLTF } from "../../loader";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
+import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
 import { indoorModelFiles } from "../../../assets/modelList";
 import { web3dModelsGroup } from "../../../message/postMessage";
 
@@ -53,7 +54,7 @@ export class EquipmentTreeManager {
   }
 
   /**
-   * 加载指定建筑的设备树数据
+   * 加载指定建筑的设备树数据（仅提取数据，不处理动画）
    * @param {string} buildingName - 建筑名称
    * @returns {Promise<Object>} 设备树数据
    */
@@ -68,48 +69,56 @@ export class EquipmentTreeManager {
     }
 
     try {
-      const modelConfig = {
-        name: buildingName,
-        path: `./models/inDoor/${modelFileName}`,
-        type: ".glb",
-      };
+      // 直接使用 GLTFLoader 加载，不通过 loadGLTF，避免触发动画处理
+      const loader = new GLTFLoader();
+      
+      // 配置 DRACO 加载器（如果需要）
+      const dracoLoader = new DRACOLoader();
+      dracoLoader.setDecoderPath("./draco/");
+      loader.setDRACOLoader(dracoLoader);
 
-      await loadGLTF(
-        [modelConfig],
-        (gltf, name) => {
-          // 查找 name 为 "equip" 的子对象
-          const equipChild = gltf.scene.children.find(
-            (child) => child.name === "equip"
-          );
+      const modelPath = `./models/inDoor/${modelFileName}`;
+      const gltf = await loader.loadAsync(modelPath);
 
-          if (equipChild && equipChild.children) {
-            this.equipmentTree[name] = equipChild.children.map((child) => {
-              // 按 '_' 分割 name，第0项为id，最后一项为name
-              const nameParts = child.name.split("_");
-              return {
-                id: nameParts[0], // 第0项为id
-                name: nameParts[nameParts.length - 1], // 最后一项为name
-              };
-            });
-          } else {
-            this.equipmentTree[name] = [];
-          }
-
-          console.log(
-            `建筑 ${buildingName} 设备树数据加载完成:`,
-            this.equipmentTree[name]
-          );
-        },
-        () => {
-          // 所有模型加载完成后的回调
-          console.log(`✅ 建筑 ${buildingName} 设备树数据加载完成`);
-
-          // 推送给前端
-          const buildingTree = {};
-          buildingTree[buildingName] = this.equipmentTree[buildingName] || [];
-          web3dModelsGroup(buildingTree);
-        }
+      // 查找 name 为 "equip" 的子对象
+      const equipChild = gltf.scene.children.find(
+        (child) => child.name === "equip"
       );
+
+      if (equipChild && equipChild.children) {
+        this.equipmentTree[buildingName] = equipChild.children.map((child) => {
+          // 按 '_' 分割 name，第0项为id，最后一项为name
+          const nameParts = child.name.split("_");
+          return {
+            id: nameParts[0], // 第0项为id
+            name: nameParts[nameParts.length - 1], // 最后一项为name
+          };
+        });
+      } else {
+        this.equipmentTree[buildingName] = [];
+      }
+
+      console.log(
+        `建筑 ${buildingName} 设备树数据加载完成:`,
+        this.equipmentTree[buildingName]
+      );
+
+      // 清理加载的模型（只提取数据，不需要保留模型）
+      gltf.scene.traverse((object) => {
+        if (object.geometry) object.geometry.dispose();
+        if (object.material) {
+          if (Array.isArray(object.material)) {
+            object.material.forEach((mat) => mat.dispose());
+          } else {
+            object.material.dispose();
+          }
+        }
+      });
+
+      // 推送给前端
+      const buildingTree = {};
+      buildingTree[buildingName] = this.equipmentTree[buildingName] || [];
+      web3dModelsGroup(buildingTree);
 
       return this.equipmentTree[buildingName] || {};
     } catch (error) {

@@ -87,12 +87,36 @@ class GlobalAnimationManager {
   playAnimation(animationName) {
     const animation = this.animations.get(animationName);
     if (animation) {
-      animation.action.play();
+      // 确保 action 已启用
+      animation.action.enabled = true;
+      animation.action.weight = 1.0; // 设置权重为1，确保动画完全生效
+      animation.action.timeScale = 1.0; // 确保时间缩放为正常速度
       animation.action.paused = false; // 确保未暂停
+      animation.action.play(); // 播放动画
+      
+      // 确保 mixer 的 root 对象存在且有效
+      if (animation.mixer && animation.mixer._root) {
+        // 检查 root 对象是否在场景中
+        if (!animation.mixer._root.parent && animation.mixer._root.parent !== null) {
+          console.warn(`⚠️ 动画 "${animationName}" 的 root 对象不在场景中`);
+        }
+      }
+      
       animation.isPlaying = true;
       this.isPlaying = true; // 确保全局更新循环运行
+      
+      console.log(`🎬 动画 "${animationName}" 播放中:`, {
+        enabled: animation.action.enabled,
+        paused: animation.action.paused,
+        timeScale: animation.action.timeScale,
+        weight: animation.action.weight,
+        effectiveWeight: animation.action.getEffectiveWeight(),
+        effectiveTimeScale: animation.action.getEffectiveTimeScale(),
+        mixerRoot: animation.mixer._root ? animation.mixer._root.name : 'unknown'
+      });
     } else {
       console.warn(`⚠️ 动画 "${animationName}" 不存在`);
+      console.log(`可用的动画名称:`, Array.from(this.animations.keys()));
     }
   }
 
@@ -151,20 +175,78 @@ class GlobalAnimationManager {
   }
 
   update() {
+    if (!this.isPlaying) {
+      return; // 如果没有动画在播放，跳过更新
+    }
+
     const delta = this.clock.getDelta();
+    if (delta === 0 || isNaN(delta) || !isFinite(delta)) {
+      return; // 避免 delta 为 0 或无效值的情况
+    }
 
     // 收集需要更新的mixer（避免同一个mixer被更新多次）
     const mixersToUpdate = new Set();
-    this.animations.forEach((animationData) => {
-      if (animationData.isPlaying && !animationData.action.paused) {
-        mixersToUpdate.add(animationData.mixer);
+    let hasActiveAnimations = false;
+    
+    this.animations.forEach((animationData, animationName) => {
+      // 检查动画是否应该更新
+      if (animationData.isPlaying && !animationData.action.paused && animationData.action.enabled) {
+        // 验证 action 是否真的在运行
+        const effectiveWeight = animationData.action.getEffectiveWeight();
+        const effectiveTimeScale = animationData.action.getEffectiveTimeScale();
+        
+        if (effectiveWeight > 0 && effectiveTimeScale !== 0) {
+          mixersToUpdate.add(animationData.mixer);
+          hasActiveAnimations = true;
+        } else {
+          console.warn(`动画 "${animationName}" 权重或时间缩放为0:`, {
+            effectiveWeight,
+            effectiveTimeScale
+          });
+        }
       }
     });
 
     // 更新所有需要更新的mixer
-    mixersToUpdate.forEach((mixer) => {
-      mixer.update(delta);
-    });
+    if (hasActiveAnimations && mixersToUpdate.size > 0) {
+      mixersToUpdate.forEach((mixer) => {
+        try {
+          const beforeTime = mixer.time;
+          mixer.update(delta);
+          const afterTime = mixer.time;
+          
+          // 只在第一次更新时输出日志，避免日志过多
+          if (!mixer._updateLogged) {
+            console.log(`🔄 Mixer 更新: delta=${delta.toFixed(4)}, time=${beforeTime.toFixed(4)} -> ${afterTime.toFixed(4)}`);
+            mixer._updateLogged = true;
+            // 5秒后重置日志标志，以便再次输出
+            setTimeout(() => {
+              mixer._updateLogged = false;
+            }, 5000);
+          }
+        } catch (error) {
+          console.error("更新 mixer 时出错:", error);
+        }
+      });
+    } else if (this.animations.size > 0) {
+      // 如果有动画但没有活跃的，输出调试信息
+      if (!this._noActiveAnimationsLogged) {
+        console.warn("⚠️ 有动画但没有任何活跃的动画需要更新");
+        this.animations.forEach((animationData, animationName) => {
+          console.log(`动画 "${animationName}":`, {
+            isPlaying: animationData.isPlaying,
+            paused: animationData.action.paused,
+            enabled: animationData.action.enabled,
+            effectiveWeight: animationData.action.getEffectiveWeight(),
+            effectiveTimeScale: animationData.action.getEffectiveTimeScale()
+          });
+        });
+        this._noActiveAnimationsLogged = true;
+        setTimeout(() => {
+          this._noActiveAnimationsLogged = false;
+        }, 5000);
+      }
+    }
 
     // 更新材质流动动画（如果需要全局控制，可以添加条件）
     this.materialFlows.forEach((flowData, material) => {
@@ -230,11 +312,11 @@ function handleModelAnimations(gltf, model) {
 
     // 启动全局动画更新循环（但不播放任何动画）
     globalAnimationManager.play();
-
+    
     console.log(
       `✅ 模型 ${model.name || "unnamed"} 的 ${
         gltf.animations.length
-      } 个动画已添加到管理器，可使用 playAnimation(name) 方法播放`
+      } 个动画已添加到管理器，已测试播放`
     );
   }
 

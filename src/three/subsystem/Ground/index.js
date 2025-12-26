@@ -38,6 +38,7 @@ import { Tooltip } from "../../components/Tooltip";
 import { SceneHint } from "../../components/SceneHint";
 import { BuildingHoverRings } from "../../../lib/BuildingHoverRings";
 import { glassEffect } from "../../../shader";
+import { globalAnimationManager } from "../../loader";
 
 // 获取模型文件列表
 async function getModelFiles() {
@@ -136,6 +137,12 @@ export class Ground extends CustomSystem {
 
     // 初始化工艺标签存储（类似室内场景的 simpleLabel）
     this.simpleLabel = {};
+
+    // 初始化工艺模型标签存储对象（按楼层/区域存储）
+    this.processModelLabel = {};
+
+    // 待处理的工艺模型数据（模型未加载时存储，加载后应用）
+    this.pendingModelData = {};
 
     this.init();
   }
@@ -664,7 +671,36 @@ string} name
     }
     // 动画现在由全局动画管理器统一处理
 
+    // 处理工艺模型（_model）
+    this.processModelObjects(model);
+
     this._add(model);
+  }
+
+  /**
+   * 处理模型中的工艺模型对象
+   * @param {THREE.Object3D} model - 模型对象
+   */
+  processModelObjects(model) {
+    // 使用 "outdoor" 作为室外场景的区域标识
+    const areaName = "outdoor";
+    
+    // 初始化区域工艺模型标签对象
+    if (!this.processModelLabel[areaName]) {
+      this.processModelLabel[areaName] = {};
+    }
+
+    // 遍历模型查找 _model 对象
+    model.traverse((object) => {
+      if (object.name && object.name.includes("_model")) {
+        const modelName = object.name.split("_model")[0];
+        
+        // 存储工艺模型引用
+        this.processModelLabel[areaName][modelName] = {
+          deviceObject: object,
+        };
+      }
+    });
   }
 
   /**
@@ -1295,6 +1331,8 @@ string} name
     console.log("离开地面广场系统");
   }
   onLoaded() {
+    // 模型加载完成后，比对并应用待处理的数据
+    this.applyAllPendingModelData();
     if (!this.useCameraState) {
       autoRotate(this);
     }
@@ -2072,6 +2110,227 @@ string} name
       // 使用默认的天空颜色
       this.scene.background = new THREE.Color(0x87ceeb);
       console.log("使用默认天空蓝色");
+    }
+  }
+
+  /**
+   * 从 processModelLabel 中查找工艺模型
+   * @param {string} code - 设备编号
+   * @returns {Object|null} {labelInfo, areaName, modelName} 或 null
+   */
+  findProcessModelByCode(code) {
+    let foundModel = null;
+    let foundArea = null;
+    let foundModelName = null;
+
+    // 遍历所有区域的工艺模型标签
+    Object.keys(this.processModelLabel).forEach((areaName) => {
+      Object.keys(this.processModelLabel[areaName]).forEach((modelName) => {
+        const labelInfo = this.processModelLabel[areaName][modelName];
+        if (labelInfo && labelInfo.deviceObject) {
+          const deviceObj = labelInfo.deviceObject;
+          // 检查设备对象的名称是否匹配code
+          let deviceCode = deviceObj.name;
+          if (deviceObj.name.includes("_model")) {
+            deviceCode = deviceObj.name.split("_model")[0];
+          } else if (deviceObj.name.includes("_shebei")) {
+            deviceCode = deviceObj.name.split("_shebei")[0];
+          } else if (deviceObj.name.includes("_")) {
+            deviceCode = deviceObj.name.split("_")[0];
+          }
+          
+          if (deviceCode === code || modelName === code) {
+            foundModel = labelInfo;
+            foundArea = areaName;
+            foundModelName = modelName;
+          }
+        }
+      });
+    });
+
+    return foundModel ? { labelInfo: foundModel, areaName: foundArea, modelName: foundModelName } : null;
+  }
+
+  /**
+   * 应用单个工艺模型数据
+   * @param {string} code - 设备编号
+   * @param {Object} modelData - 模型数据 {name, status, attribute}
+   * @param {Object} foundResult - 查找结果 {labelInfo, areaName, modelName}
+   */
+  applyProcessModelData(code, modelData, foundResult) {
+    const { name, status, attribute = [] } = modelData;
+    
+    if (foundResult && foundResult.labelInfo) {
+      // 找到模型，直接应用
+      const { labelInfo } = foundResult;
+      
+      // 更新模型颜色和动画
+      this.updateModelColorAndAnimation(labelInfo.deviceObject, code, status);
+      
+      // 更新标签（如果存在）
+      if (this.simpleLabel && this.simpleLabel[code]) {
+        const labelInfo2 = this.simpleLabel[code];
+        if (labelInfo2.element) {
+          // 更新标签显示的名称（如果有）
+          if (name) {
+            this.updateLabelElement(labelInfo2.element, name, null);
+          }
+        }
+      }
+
+      console.log(`室外场景工艺模型 ${code} 状态更新完成: status=${status}, attribute数量=${attribute.length}`);
+    } else {
+      // 未找到模型，存储到待处理数据
+      this.pendingModelData[code] = {
+        code,
+        name: name || code,
+        status,
+        attribute
+      };
+      console.log(`室外场景工艺模型 ${code} 未找到，数据已存储到待处理列表，将在模型加载后自动应用`);
+    }
+  }
+
+  /**
+   * 应用所有待处理的工艺模型数据（在模型加载完成后调用）
+   */
+  applyAllPendingModelData() {
+    if (!this.pendingModelData || Object.keys(this.pendingModelData).length === 0) {
+      return;
+    }
+
+    console.log("开始比对并应用待处理的工艺模型数据（室外场景）...");
+    console.log("待处理数据:", this.pendingModelData);
+    console.log("已加载的工艺模型:", this.processModelLabel);
+
+    // 遍历所有待处理的数据
+    Object.keys(this.pendingModelData).forEach((code) => {
+      const pendingData = this.pendingModelData[code];
+      if (!pendingData) return;
+
+      // 从 processModelLabel 中查找对应的模型
+      const foundResult = this.findProcessModelByCode(pendingData.code);
+      
+      if (foundResult) {
+        console.log(`找到待处理数据对应的模型 ${pendingData.code}，开始应用（室外场景）`);
+        // 应用数据
+        this.applyProcessModelData(pendingData.code, pendingData, foundResult);
+        
+        // 从待处理列表中移除
+        delete this.pendingModelData[code];
+      } else {
+        console.log(`待处理数据 ${pendingData.code} 对应的模型尚未加载，保留在待处理列表（室外场景）`);
+      }
+    });
+
+    console.log("待处理数据比对完成（室外场景），剩余待处理数据:", Object.keys(this.pendingModelData).length);
+  }
+
+  /**
+   * 更新工艺模型状态（颜色、动画、属性）
+   * @param {Array} modelData - 模型数据数组 [{code, name, status, attribute}]
+   */
+  updateModelStatus(modelData) {
+    if (!Array.isArray(modelData)) {
+      console.warn("updateModelStatus 参数格式错误，应为数组");
+      return;
+    }
+
+    console.log("开始更新室外场景工艺模型状态，数据:", modelData);
+
+    modelData.forEach((model) => {
+      const { code, name, status, attribute = [] } = model;
+
+      if (!code) {
+        console.warn("模型数据缺少 code 字段:", model);
+        return;
+      }
+
+      // 从 processModelLabel 中查找模型
+      const foundResult = this.findProcessModelByCode(code);
+      
+      // 应用数据（如果找不到会存储到待处理列表）
+      this.applyProcessModelData(code, { name, status, attribute }, foundResult);
+    });
+
+    console.log("室外场景工艺模型状态更新完成");
+  }
+
+  /**
+   * 更新模型颜色和动画
+   * @param {THREE.Object3D} deviceObject - 设备对象
+   * @param {string} code - 设备编号
+   * @param {number} status - 状态 1=开启 2=关闭
+   */
+  updateModelColorAndAnimation(deviceObject, code, status) {
+    if (!deviceObject) return;
+
+    // 控制动画 - 尝试多种可能的动画名称
+    const possibleAnimationNames = [
+      code,
+      deviceObject.name,
+      deviceObject.name.split("_model")[0],
+      deviceObject.name.split("_shebei")[0],
+      deviceObject.name.split("_")[0],
+      `animation_${deviceObject.name}`,
+      `animation_${code}`
+    ];
+
+    let animationFound = false;
+    for (const animationName of possibleAnimationNames) {
+      if (globalAnimationManager.getAnimationNames) {
+        // 检查动画是否存在
+        const allAnimations = globalAnimationManager.getAnimationNames();
+        if (allAnimations.includes(animationName)) {
+          if (status === 1) {
+            // 开启：播放动画
+            globalAnimationManager.playAnimation(animationName);
+            console.log(`播放动画: ${animationName}`);
+          } else if (status === 2) {
+            // 关闭：暂停动画
+            globalAnimationManager.pauseAnimation(animationName);
+            console.log(`暂停动画: ${animationName}`);
+          }
+          animationFound = true;
+          break;
+        }
+      } else {
+        // 如果没有getAnimationNames方法，直接尝试播放/暂停
+        try {
+          if (status === 1) {
+            globalAnimationManager.playAnimation(animationName);
+            console.log(`尝试播放动画: ${animationName}`);
+            animationFound = true;
+            break;
+          } else if (status === 2) {
+            globalAnimationManager.pauseAnimation(animationName);
+            console.log(`尝试暂停动画: ${animationName}`);
+            animationFound = true;
+            break;
+          }
+        } catch (e) {
+          // 动画不存在，继续尝试下一个
+        }
+      }
+    }
+
+    if (!animationFound) {
+      console.log(`未找到设备 ${code} 的动画，跳过动画控制`);
+    }
+
+    // 控制轮廓效果（模型周围一圈绿色）
+    if (status === 1) {
+      // 开启：添加绿色轮廓效果（只显示轮廓，不修改材质）
+      if (this.core && this.core.postprocessing) {
+        // 使用 channel 2 来显示绿色轮廓
+        // 注意：需要在 postprocessing 中配置 channel 2 为绿色
+        this.core.postprocessing.addOutline(deviceObject, 2);
+      }
+    } else if (status === 2) {
+      // 关闭：清除轮廓效果
+      if (this.core && this.core.postprocessing) {
+        this.core.postprocessing.clearOutline(deviceObject, 2);
+      }
     }
   }
 }
