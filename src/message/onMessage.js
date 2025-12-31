@@ -603,6 +603,23 @@ export const onMessage = async () => {
 
           break;
         }
+        case "setFloorLabelsVisible": {
+          // 控制切换楼层后是否默认显示牌子
+          const visible = event.data.param;
+          if (typeof visible !== 'boolean') {
+            console.warn("setFloorLabelsVisible 参数格式错误，应为布尔值");
+            return;
+          }
+
+          console.log("收到设置牌子显示状态指令:", visible);
+
+          // 室内场景处理
+          if (core.indoorSubsystem) {
+            core.indoorSubsystem.setFloorLabelsVisible(visible);
+          }
+
+          break;
+        }
       }
     }
   });
@@ -968,5 +985,168 @@ export const onMessage = async () => {
     document.body.appendChild(designTestPanel);
 
     console.log("=== updateDesign 测试面板已创建 ===");
+
+    // 创建牌子显示控制测试面板
+    const labelsControlPanel = document.createElement("div");
+    labelsControlPanel.id = "floorLabelsControlPanel";
+    labelsControlPanel.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 480px;
+      background: rgba(0, 0, 0, 0.8);
+      border: 2px solid #9b59b6;
+      border-radius: 8px;
+      padding: 15px;
+      z-index: 10000;
+      font-family: Arial, sans-serif;
+      min-width: 200px;
+    `;
+
+    const labelsControlTitle = document.createElement("div");
+    labelsControlTitle.textContent = "牌子显示控制";
+    labelsControlTitle.style.cssText = `
+      color: #9b59b6;
+      font-size: 16px;
+      font-weight: bold;
+      margin-bottom: 10px;
+      text-align: center;
+    `;
+    labelsControlPanel.appendChild(labelsControlTitle);
+
+    // 创建显示按钮
+    const showButton = document.createElement("button");
+    showButton.textContent = "默认显示牌子";
+    showButton.style.cssText = `
+      display: block;
+      width: 100%;
+      margin: 5px 0;
+      padding: 8px 12px;
+      background: #1a1a2e;
+      color: #9b59b6;
+      border: 1px solid #9b59b6;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.3s;
+    `;
+    showButton.addEventListener("mouseenter", () => {
+      showButton.style.background = "#9b59b6";
+      showButton.style.color = "#000";
+    });
+    showButton.addEventListener("mouseleave", () => {
+      showButton.style.background = "#1a1a2e";
+      showButton.style.color = "#9b59b6";
+    });
+    showButton.addEventListener("click", () => {
+      if (core && core.indoorSubsystem) {
+        core.indoorSubsystem.setFloorLabelsVisible(true);
+        // 按钮点击反馈
+        showButton.style.background = "#90ee90";
+        showButton.style.color = "#000";
+        setTimeout(() => {
+          showButton.style.background = "#1a1a2e";
+          showButton.style.color = "#9b59b6";
+        }, 300);
+      }
+    });
+    labelsControlPanel.appendChild(showButton);
+
+    // 创建隐藏按钮
+    const hideButton = document.createElement("button");
+    hideButton.textContent = "默认隐藏牌子";
+    hideButton.style.cssText = `
+      display: block;
+      width: 100%;
+      margin: 5px 0;
+      padding: 8px 12px;
+      background: #1a1a2e;
+      color: #9b59b6;
+      border: 1px solid #9b59b6;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.3s;
+    `;
+    hideButton.addEventListener("mouseenter", () => {
+      hideButton.style.background = "#9b59b6";
+      hideButton.style.color = "#000";
+    });
+    hideButton.addEventListener("mouseleave", () => {
+      hideButton.style.background = "#1a1a2e";
+      hideButton.style.color = "#9b59b6";
+    });
+    hideButton.addEventListener("click", () => {
+      if (core && core.indoorSubsystem) {
+        core.indoorSubsystem.setFloorLabelsVisible(false);
+        // 按钮点击反馈
+        hideButton.style.background = "#90ee90";
+        hideButton.style.color = "#000";
+        setTimeout(() => {
+          hideButton.style.background = "#1a1a2e";
+          hideButton.style.color = "#9b59b6";
+        }, 300);
+      }
+    });
+    labelsControlPanel.appendChild(hideButton);
+
+    // 添加状态显示
+    const statusDisplay = document.createElement("div");
+    statusDisplay.id = "labelsControlStatus";
+    statusDisplay.textContent = "当前状态: 默认显示";
+    statusDisplay.style.cssText = `
+      margin-top: 10px;
+      padding: 8px;
+      background: rgba(155, 89, 182, 0.2);
+      border-radius: 4px;
+      font-size: 12px;
+      color: #9b59b6;
+      text-align: center;
+    `;
+    labelsControlPanel.appendChild(statusDisplay);
+
+    // 添加关闭按钮
+    const labelsControlCloseButton = document.createElement("button");
+    labelsControlCloseButton.textContent = "关闭面板";
+    labelsControlCloseButton.style.cssText = `
+      display: block;
+      width: 100%;
+      margin-top: 10px;
+      padding: 6px 12px;
+      background: #8b0000;
+      color: #fff;
+      border: 1px solid #8b0000;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    `;
+    labelsControlCloseButton.addEventListener("click", () => {
+      labelsControlPanel.remove();
+    });
+    labelsControlPanel.appendChild(labelsControlCloseButton);
+
+    // 添加到页面
+    document.body.appendChild(labelsControlPanel);
+
+    // 定期更新状态显示
+    const updateStatusDisplay = () => {
+      if (core && core.indoorSubsystem && statusDisplay) {
+        const currentStatus = core.indoorSubsystem.showLabelsByDefault;
+        statusDisplay.textContent = `当前状态: ${currentStatus ? '默认显示' : '默认隐藏'}`;
+      }
+    };
+
+    // 监听状态变化（通过拦截方法调用）
+    if (core && core.indoorSubsystem) {
+      const originalSetFloorLabelsVisible = core.indoorSubsystem.setFloorLabelsVisible.bind(core.indoorSubsystem);
+      core.indoorSubsystem.setFloorLabelsVisible = function(visible) {
+        originalSetFloorLabelsVisible(visible);
+        updateStatusDisplay();
+      };
+    }
+
+    // 初始状态更新
+    setTimeout(updateStatusDisplay, 100);
+
+    console.log("=== 牌子显示控制测试面板已创建 ===");
   }, 3000); // 延迟3秒执行，确保场景已加载
 };

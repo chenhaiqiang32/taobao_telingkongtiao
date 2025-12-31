@@ -80,6 +80,9 @@ export class IndoorSubsystem extends CustomSystem {
     // 保存首次进入时的相机位置
     this.initialCameraPosition = null;
     this.initialControlsTarget = null;
+
+    // 控制切换楼层后是否默认显示牌子（默认显示）
+    this.showLabelsByDefault = true;
   }
 
   async onEnter(buildingName) {
@@ -802,8 +805,12 @@ export class IndoorSubsystem extends CustomSystem {
             // 在楼层切换动画完成后加载设备标签数据
             this.loadAndRenderDeviceLabels();
 
-            // 显示当前楼层的标签
-            this.showFloorLabels(floor);
+            // 根据配置决定是否显示当前楼层的标签
+            if (this.showLabelsByDefault) {
+              this.showFloorLabels(floor);
+            } else {
+              console.log(`牌子默认隐藏已启用，楼层 ${floor} 的标签将不显示`);
+            }
 
             // 从存储的数据中检索并应用设计数据
             this.applyStoredDesignData(floor);
@@ -1036,8 +1043,12 @@ export class IndoorSubsystem extends CustomSystem {
           // 在楼层内部切换完成后加载设备标签数据
           this.loadAndRenderDeviceLabels();
 
-          // 显示当前楼层的标签
-          this.showFloorLabels(target);
+          // 根据配置决定是否显示当前楼层的标签
+          if (this.showLabelsByDefault) {
+            this.showFloorLabels(target);
+          } else {
+            console.log(`牌子默认隐藏已启用，楼层 ${target} 的标签将不显示`);
+          }
 
           // 从存储的数据中检索并应用设计数据
           this.applyStoredDesignData(target);
@@ -3016,8 +3027,12 @@ export class IndoorSubsystem extends CustomSystem {
             // 在楼层切换动画完成后加载设备标签数据
             this.loadAndRenderDeviceLabels();
 
-            // 显示当前楼层的标签
-            this.showFloorLabels(floor);
+            // 根据配置决定是否显示当前楼层的标签
+            if (this.showLabelsByDefault) {
+              this.showFloorLabels(floor);
+            } else {
+              console.log(`牌子默认隐藏已启用，楼层 ${floor} 的标签将不显示`);
+            }
 
             // 从存储的数据中检索并应用设计数据
             this.applyStoredDesignData(floor);
@@ -3882,5 +3897,23 @@ export class IndoorSubsystem extends CustomSystem {
     }
 
     console.log(`弹窗内容已更新: ${designData.code || '未知'}`);
+  }
+
+  /**
+   * 设置切换楼层后是否默认显示牌子
+   * @param {boolean} visible - true 表示默认显示，false 表示默认隐藏
+   */
+  setFloorLabelsVisible(visible) {
+    this.showLabelsByDefault = visible;
+    console.log(`牌子默认显示状态已设置为: ${visible ? '显示' : '隐藏'}`);
+    
+    // 如果当前有楼层，立即应用新的设置
+    if (this.currentFloor && this.currentFloor.name) {
+      if (visible) {
+        this.showFloorLabels(this.currentFloor.name);
+      } else {
+        this.hideFloorLabels(this.currentFloor.name);
+      }
+    }
   }
 }
