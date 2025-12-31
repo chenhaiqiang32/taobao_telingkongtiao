@@ -2551,6 +2551,11 @@ export class IndoorSubsystem extends CustomSystem {
       if (code) {
         this.designDataMap[code] = design;
         console.log(`存储工艺设计数据: ${code}`, design);
+
+        // 如果弹窗已打开且是当前 code，更新弹窗内容
+        if (this.designInfoModal && this.designInfoModal.dataset.code === code) {
+          this.updateDesignInfoModalContent(design);
+        }
       } else {
         console.warn("设计数据缺少 code 字段:", design);
       }
@@ -2624,7 +2629,12 @@ export class IndoorSubsystem extends CustomSystem {
       }
 
       if (labelInfo) {
-        this.updateSingleDesign(labelInfo, name, status, code);
+        // 确保 name 和 status 都有值
+        const designName = name || code; // 如果没有 name，使用 code 作为默认值
+        const designStatus = status || '#ffffff'; // 如果没有 status，使用默认颜色
+        
+        console.log(`准备更新工艺 ${code}: name=${designName}, status=${designStatus}`);
+        this.updateSingleDesign(labelInfo, designName, designStatus, code);
         console.log(`楼层 ${floorName} 的工艺 ${code} 已应用设计数据`);
       } else {
         // 不在当前楼层的设备，不输出警告（这是正常的）
@@ -2648,33 +2658,33 @@ export class IndoorSubsystem extends CustomSystem {
       return;
     }
 
-    // 验证 status 参数
-    if (!status || typeof status !== 'string') {
-      console.warn(`工艺 ${code} 的状态颜色无效: ${status}，跳过颜色更新`);
-      // 如果只有名称，仍然可以更新名称
-      if (name && labelInfo.element) {
-        this.updateLabelElement(labelInfo.element, name, null);
-      }
-      return;
-    }
-
     const { element, css2dObject, deviceObject } = labelInfo;
 
     // 1. 更新工艺模型（deviceObject）的颜色
-    if (deviceObject) {
+    if (deviceObject && status && typeof status === 'string') {
       this.updateDeviceObjectColor(deviceObject, status);
+    } else if (deviceObject) {
+      console.warn(`工艺 ${code} 的状态颜色无效: ${status}，跳过模型颜色更新`);
     } else {
       console.warn(`设备对象不存在 (code: ${code})`);
     }
 
     // 2. 更新工艺牌子（element）的颜色和文本
+    // 无论 status 是否有效，都尝试更新文本内容
     if (element) {
-      this.updateLabelElement(element, name, status);
+      // 如果 status 有效，同时更新颜色和文本
+      // 如果 status 无效，只更新文本
+      const validStatus = (status && typeof status === 'string') ? status : null;
+      this.updateLabelElement(element, name, validStatus);
+      
+      if (!validStatus && name) {
+        console.log(`工艺 ${code} 只更新文本，不更新颜色: ${name}`);
+      }
     } else {
       console.warn(`标签元素不存在 (code: ${code})`);
     }
 
-    console.log(`工艺 ${code} 更新完成: 名称=${name}, 颜色=${status}`);
+    console.log(`工艺 ${code} 更新完成: 名称=${name || '未设置'}, 颜色=${status || '未设置'}`);
   }
 
   /**
@@ -2728,21 +2738,42 @@ export class IndoorSubsystem extends CustomSystem {
    * @param {string} colorHex - 颜色值（十六进制字符串，可选）
    */
   updateLabelElement(element, name, colorHex) {
-    if (!element) return;
+    if (!element) {
+      console.warn("updateLabelElement: element 不存在");
+      return;
+    }
 
     // 更新文本内容（如果有 name 参数）
-    if (name) {
-      // 查找显示名称的元素
-      const nameSpan = element.querySelector("span");
+    if (name !== undefined && name !== null) {
+      // 查找显示名称的元素（span 元素）
+      let nameSpan = element.querySelector("span");
+      
+      if (!nameSpan) {
+        // 如果没有找到 span，尝试查找所有子元素中的 span
+        const allSpans = element.querySelectorAll("span");
+        if (allSpans.length > 0) {
+          nameSpan = allSpans[0];
+        }
+      }
+      
       if (nameSpan) {
         nameSpan.textContent = name;
+        console.log(`更新牌子文本: ${name}`);
       } else {
-        // 如果没有 span，直接更新 element 的文本内容
-        const textNode = Array.from(element.childNodes).find(
+        // 如果仍然找不到 span，尝试直接更新 element 的文本内容
+        // 但需要保留其他子元素（如发光效果的 div）
+        const textNodes = Array.from(element.childNodes).filter(
           (node) => node.nodeType === Node.TEXT_NODE
         );
-        if (textNode) {
-          textNode.textContent = name;
+        if (textNodes.length > 0) {
+          textNodes[0].textContent = name;
+        } else {
+          // 如果既没有 span 也没有文本节点，创建一个新的 span
+          const newSpan = document.createElement("span");
+          newSpan.style.cssText = "position: relative; z-index: 1;";
+          newSpan.textContent = name;
+          element.appendChild(newSpan);
+          console.log(`创建新的 span 元素并设置文本: ${name}`);
         }
       }
     }
@@ -2759,6 +2790,7 @@ export class IndoorSubsystem extends CustomSystem {
         element.style.textShadow = `0 1px 2px ${brighterColor}`;
         // 更新渐变背景（可选，如果需要）
         // element.style.background = `linear-gradient(135deg, ${this.addAlpha(colorHex, 0.1)}, ${this.addAlpha(colorHex, 0.05)})`;
+        console.log(`更新牌子颜色: ${colorHex}`);
       }
     }
   }
@@ -3609,14 +3641,20 @@ export class IndoorSubsystem extends CustomSystem {
    * @param {Object} designData - 设计数据 {code, name, status, info: {project, startTime, task}}
    */
   showDesignInfoModal(designData) {
-    // 如果弹窗已存在，先移除
+    const { code, name, info = {} } = designData;
+    const { project = '', startTime = '', task = '' } = info;
+
+    // 如果弹窗已存在且是同一个 code，直接更新内容而不是重新创建
+    if (this.designInfoModal && this.designInfoModal.dataset.code === code) {
+      this.updateDesignInfoModalContent(designData);
+      return;
+    }
+
+    // 如果弹窗已存在但 code 不同，先移除
     if (this.designInfoModal) {
       this.designInfoModal.remove();
       this.designInfoModal = null;
     }
-
-    const { name, info = {} } = designData;
-    const { project = '', startTime = '', task = '' } = info;
 
     // 创建弹窗容器
     const modal = document.createElement("div");
@@ -3714,6 +3752,8 @@ export class IndoorSubsystem extends CustomSystem {
       margin-bottom: 5px;
     `;
     const projectValue = document.createElement("div");
+    projectValue.className = "design-info-project-value";
+    projectValue.dataset.field = "project";
     projectValue.textContent = project || "暂无";
     projectValue.style.cssText = `
       font-size: 16px;
@@ -3741,6 +3781,8 @@ export class IndoorSubsystem extends CustomSystem {
       margin-bottom: 5px;
     `;
     const startTimeValue = document.createElement("div");
+    startTimeValue.className = "design-info-starttime-value";
+    startTimeValue.dataset.field = "startTime";
     startTimeValue.textContent = startTime || "暂无";
     startTimeValue.style.cssText = `
       font-size: 16px;
@@ -3768,6 +3810,8 @@ export class IndoorSubsystem extends CustomSystem {
       margin-bottom: 5px;
     `;
     const taskValue = document.createElement("div");
+    taskValue.className = "design-info-task-value";
+    taskValue.dataset.field = "task";
     taskValue.textContent = task || "暂无";
     taskValue.style.cssText = `
       font-size: 16px;
@@ -3781,6 +3825,9 @@ export class IndoorSubsystem extends CustomSystem {
 
     modal.appendChild(content);
 
+    // 保存 code 到弹窗的 dataset，用于后续更新时识别
+    modal.dataset.code = code;
+
     // 添加到页面
     document.body.appendChild(modal);
     this.designInfoModal = modal;
@@ -3792,5 +3839,48 @@ export class IndoorSubsystem extends CustomSystem {
         this.designInfoModal = null;
       }
     });
+  }
+
+  /**
+   * 更新设计信息弹窗的内容（不重新创建弹窗）
+   * @param {Object} designData - 设计数据 {code, name, status, info: {project, startTime, task}}
+   */
+  updateDesignInfoModalContent(designData) {
+    if (!this.designInfoModal) {
+      console.warn("弹窗不存在，无法更新内容");
+      return;
+    }
+
+    const { name, info = {} } = designData;
+    const { project = '', startTime = '', task = '' } = info;
+
+    // 更新标题（标题在 header 的第一个 div 中）
+    const header = this.designInfoModal.querySelector('div:first-child');
+    if (header) {
+      const titleText = header.querySelector('div:first-child');
+      if (titleText) {
+        titleText.textContent = name || "工艺信息";
+      }
+    }
+
+    // 更新项目编号（使用 data-field 属性查找）
+    const projectValue = this.designInfoModal.querySelector('.design-info-project-value');
+    if (projectValue) {
+      projectValue.textContent = project || "暂无";
+    }
+
+    // 更新项目开始时间
+    const startTimeValue = this.designInfoModal.querySelector('.design-info-starttime-value');
+    if (startTimeValue) {
+      startTimeValue.textContent = startTime || "暂无";
+    }
+
+    // 更新当前任务
+    const taskValue = this.designInfoModal.querySelector('.design-info-task-value');
+    if (taskValue) {
+      taskValue.textContent = task || "暂无";
+    }
+
+    console.log(`弹窗内容已更新: ${designData.code || '未知'}`);
   }
 }

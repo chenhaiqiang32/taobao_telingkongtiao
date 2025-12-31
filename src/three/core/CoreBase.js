@@ -66,7 +66,7 @@ export class CoreBase {
   #onRenderQueue;
 
   /**@type {Compass} */
-  #compass;
+  // #compass;
 
   get onresizeQueue() {
     return this.#onresizeQueue;
@@ -210,9 +210,9 @@ export class CoreBase {
     this.#camera.position.set(0, 100, 100);
     this.#camera.lookAt(0, 0, 0);
 
-    this.#compass = new Compass(this);
-    this.#compass.theta = 27.6;
-    this.#onresizeQueue.set("compass", this.#compass.resize);
+    // this.#compass = new Compass(this);
+    // this.#compass.theta = 27.6;
+    // this.#onresizeQueue.set("compass", this.#compass.resize);
 
     /**@type {THREE.WebGLRendererParameters} */
     const webGLRendererParameters = {
@@ -477,7 +477,7 @@ export class CoreBase {
       this.#renderer.render(this.#scene, this.#camera);
     }
 
-    this.#compass.update(this);
+    // this.#compass.update(this);
     // --------------------------------------------------------------------------------------
   }
 
