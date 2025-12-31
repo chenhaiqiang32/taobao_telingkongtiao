@@ -793,5 +793,180 @@ export const onMessage = async () => {
     document.body.appendChild(testPanel);
 
     console.log("=== updateModel 测试面板已创建 ===");
+
+    // 创建 updateDesign 测试面板
+    const designTestDataSets = {
+      "设计测试1: 可跳转工艺": [
+        {
+          code: "wccl-400t-1",
+          name: "1楼工艺",
+          status: "#00ff00",
+          info: {
+            project: "PROJ-2024-001",
+            startTime: "2024-01-15 08:00:00",
+            task: "正在进行设备安装调试",
+          },
+        },
+      ],
+      "设计测试2: 不可跳转工艺": [
+        {
+          code: "wccl-400t-1",
+          name: "测试工艺01",
+          status: "#ff0000",
+          info: {
+            project: "PROJ-2024-002",
+            startTime: "2024-02-20 09:30:00",
+            task: "等待材料到货，预计下周开始施工",
+          },
+        },
+      ],
+      "设计测试3: 多个工艺": [
+        {
+          code: "test01",
+          name: "测试工艺01",
+          status: "#ffff00",
+          info: {
+            project: "PROJ-2024-003",
+            startTime: "2024-03-10 10:00:00",
+            task: "已完成基础施工，正在进行管道安装",
+          },
+        },
+        {
+          code: "test02",
+          name: "测试工艺02",
+          status: "#00ffff",
+          info: {
+            project: "PROJ-2024-004",
+            startTime: "2024-03-15 14:00:00",
+            task: "设备调试中，预计本周完成",
+          },
+        },
+      ],
+      "设计测试4: 无info信息": [
+        {
+          code: "test03",
+          name: "测试工艺03",
+          status: "#ff00ff",
+        },
+      ],
+    };
+
+    // 执行 updateDesign 测试数据的函数
+    const executeDesignTest = (testData, testName) => {
+      if (!core) {
+        console.warn("Core 未初始化，无法执行测试");
+        return;
+      }
+
+      console.log(`=== 执行 updateDesign 测试: ${testName} ===`);
+      console.log("测试数据:", testData);
+
+      // 室内场景处理
+      if (core.indoorSubsystem) {
+        core.indoorSubsystem.updateDesign(testData);
+      }
+
+      // 室外场景处理
+      if (core.ground) {
+        core.ground.updateDesign(testData);
+      }
+
+      console.log(`=== ${testName} 测试完成 ===`);
+    };
+
+    // 创建 updateDesign 测试面板
+    const designTestPanel = document.createElement("div");
+    designTestPanel.id = "updateDesignTestPanel";
+    designTestPanel.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 240px;
+      background: rgba(0, 0, 0, 0.8);
+      border: 2px solid #ff6b6b;
+      border-radius: 8px;
+      padding: 15px;
+      z-index: 10000;
+      font-family: Arial, sans-serif;
+      min-width: 200px;
+    `;
+
+    const designTitle = document.createElement("div");
+    designTitle.textContent = "updateDesign 测试面板";
+    designTitle.style.cssText = `
+      color: #ff6b6b;
+      font-size: 16px;
+      font-weight: bold;
+      margin-bottom: 10px;
+      text-align: center;
+    `;
+    designTestPanel.appendChild(designTitle);
+
+    // 创建按钮
+    Object.keys(designTestDataSets).forEach((testName) => {
+      const button = document.createElement("button");
+      button.textContent = testName;
+      button.style.cssText = `
+        display: block;
+        width: 100%;
+        margin: 5px 0;
+        padding: 8px 12px;
+        background: #1a1a2e;
+        color: #ff6b6b;
+        border: 1px solid #ff6b6b;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+        transition: all 0.3s;
+      `;
+
+      // 鼠标悬停效果
+      button.addEventListener("mouseenter", () => {
+        button.style.background = "#ff6b6b";
+        button.style.color = "#000";
+      });
+      button.addEventListener("mouseleave", () => {
+        button.style.background = "#1a1a2e";
+        button.style.color = "#ff6b6b";
+      });
+
+      // 点击事件
+      button.addEventListener("click", () => {
+        executeDesignTest(designTestDataSets[testName], testName);
+        // 按钮点击反馈
+        button.style.background = "#90ee90";
+        button.style.color = "#000";
+        setTimeout(() => {
+          button.style.background = "#1a1a2e";
+          button.style.color = "#ff6b6b";
+        }, 300);
+      });
+
+      designTestPanel.appendChild(button);
+    });
+
+    // 添加关闭按钮
+    const designCloseButton = document.createElement("button");
+    designCloseButton.textContent = "关闭面板";
+    designCloseButton.style.cssText = `
+      display: block;
+      width: 100%;
+      margin-top: 10px;
+      padding: 6px 12px;
+      background: #8b0000;
+      color: #fff;
+      border: 1px solid #8b0000;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    `;
+    designCloseButton.addEventListener("click", () => {
+      designTestPanel.remove();
+    });
+    designTestPanel.appendChild(designCloseButton);
+
+    // 添加到页面
+    document.body.appendChild(designTestPanel);
+
+    console.log("=== updateDesign 测试面板已创建 ===");
   }, 3000); // 延迟3秒执行，确保场景已加载
 };

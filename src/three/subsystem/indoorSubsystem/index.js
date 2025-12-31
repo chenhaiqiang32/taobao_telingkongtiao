@@ -282,11 +282,25 @@ export class IndoorSubsystem extends CustomSystem {
             console.log(`点击牌子: ${labelName}`);
             // 通知前端点击的牌子编号
             web3dLabelClick(labelName);
-            // 调用 changeIndoor 方法，传入牌子名称
-            if (this.core && this.core.changeIndoor) {
-              this.core.changeIndoor(labelName);
+            
+            // 检查是否可以跳转到室内
+            const canJumpToIndoor = window.floorToName && window.floorToName[labelName];
+            
+            if (canJumpToIndoor) {
+              // 如果可以跳转，调用 changeIndoor 方法
+              if (this.core && this.core.changeIndoor) {
+                this.core.changeIndoor(labelName);
+              } else {
+                console.warn("无法调用 changeIndoor 方法：core 或 changeIndoor 不存在");
+              }
             } else {
-              console.warn("无法调用 changeIndoor 方法：core 或 changeIndoor 不存在");
+              // 如果不能跳转，显示设计信息弹窗
+              const designData = this.designDataMap[labelName];
+              if (designData && designData.info) {
+                this.showDesignInfoModal(designData);
+              } else {
+                console.warn(`未找到 ${labelName} 的设计数据或设计数据中没有 info 信息`);
+              }
             }
           });
 
@@ -2691,7 +2705,7 @@ export class IndoorSubsystem extends CustomSystem {
             // 使用自发光（emissive）来添加一层淡淡的颜色覆盖，而不是完全替换原色
             // 这样可以保留原始材质的纹理和细节，同时用颜色来区分
             material.emissive.copy(color);
-            material.emissiveIntensity = 0.45; // 设置较低的自发光强度，让颜色更柔和
+            material.emissiveIntensity = 0.2; // 设置较低的自发光强度，让颜色更柔和
             
             // 可选：轻微调整基础颜色，但保持原色的主色调
             // 将新颜色混合到原色中，使用较低的混合比例
@@ -3589,5 +3603,195 @@ export class IndoorSubsystem extends CustomSystem {
         this.core.postprocessing.clearOutline(deviceObject, 2);
       }
     }
+  }
+
+  /**
+   * 显示设计信息弹窗
+   * @param {Object} designData - 设计数据 {code, name, status, info: {project, startTime, task}}
+   */
+  showDesignInfoModal(designData) {
+    // 如果弹窗已存在，先移除
+    if (this.designInfoModal) {
+      this.designInfoModal.remove();
+      this.designInfoModal = null;
+    }
+
+    const { name, info = {} } = designData;
+    const { project = '', startTime = '', task = '' } = info;
+
+    // 创建弹窗容器
+    const modal = document.createElement("div");
+    modal.className = "design-info-modal";
+    modal.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 500px;
+      max-width: 90vw;
+      background: linear-gradient(135deg, rgba(30, 40, 60, 0.95), rgba(20, 30, 50, 0.95));
+      border: 1px solid rgba(100, 150, 200, 0.3);
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(10px);
+      z-index: 10000;
+      overflow: hidden;
+      color: white;
+      font-family: 'Microsoft YaHei', Arial, sans-serif;
+    `;
+
+    // 创建标题栏
+    const header = document.createElement("div");
+    header.style.cssText = `
+      background: linear-gradient(135deg, rgba(52, 152, 219, 0.3), rgba(41, 128, 185, 0.3));
+      padding: 12px 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    `;
+
+    const titleText = document.createElement("div");
+    titleText.textContent = name || "工艺信息";
+    titleText.style.cssText = `
+      font-size: 18px;
+      font-weight: 600;
+      flex: 1;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    `;
+
+    const closeButton = document.createElement("div");
+    closeButton.textContent = "×";
+    closeButton.style.cssText = `
+      width: 24px;
+      height: 24px;
+      line-height: 24px;
+      text-align: center;
+      cursor: pointer;
+      font-size: 24px;
+      color: rgba(255, 255, 255, 0.7);
+      transition: all 0.3s;
+      border-radius: 4px;
+    `;
+    closeButton.addEventListener("mouseenter", () => {
+      closeButton.style.background = "rgba(255, 255, 255, 0.2)";
+      closeButton.style.color = "#fff";
+    });
+    closeButton.addEventListener("mouseleave", () => {
+      closeButton.style.background = "transparent";
+      closeButton.style.color = "rgba(255, 255, 255, 0.7)";
+    });
+    closeButton.addEventListener("click", () => {
+      if (this.designInfoModal) {
+        this.designInfoModal.remove();
+        this.designInfoModal = null;
+      }
+    });
+
+    header.appendChild(titleText);
+    header.appendChild(closeButton);
+    modal.appendChild(header);
+
+    // 创建内容区域
+    const content = document.createElement("div");
+    content.style.cssText = `
+      padding: 20px;
+    `;
+
+    // 项目编号
+    const projectRow = document.createElement("div");
+    projectRow.style.cssText = `
+      margin-bottom: 15px;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      border-left: 3px solid rgba(52, 152, 219, 0.5);
+    `;
+    const projectLabel = document.createElement("div");
+    projectLabel.textContent = "项目编号:";
+    projectLabel.style.cssText = `
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.7);
+      margin-bottom: 5px;
+    `;
+    const projectValue = document.createElement("div");
+    projectValue.textContent = project || "暂无";
+    projectValue.style.cssText = `
+      font-size: 16px;
+      color: #fff;
+      font-weight: 500;
+    `;
+    projectRow.appendChild(projectLabel);
+    projectRow.appendChild(projectValue);
+    content.appendChild(projectRow);
+
+    // 项目开始时间
+    const startTimeRow = document.createElement("div");
+    startTimeRow.style.cssText = `
+      margin-bottom: 15px;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      border-left: 3px solid rgba(52, 152, 219, 0.5);
+    `;
+    const startTimeLabel = document.createElement("div");
+    startTimeLabel.textContent = "项目开始时间:";
+    startTimeLabel.style.cssText = `
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.7);
+      margin-bottom: 5px;
+    `;
+    const startTimeValue = document.createElement("div");
+    startTimeValue.textContent = startTime || "暂无";
+    startTimeValue.style.cssText = `
+      font-size: 16px;
+      color: #fff;
+      font-weight: 500;
+    `;
+    startTimeRow.appendChild(startTimeLabel);
+    startTimeRow.appendChild(startTimeValue);
+    content.appendChild(startTimeRow);
+
+    // 当前任务信息
+    const taskRow = document.createElement("div");
+    taskRow.style.cssText = `
+      margin-bottom: 15px;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      border-left: 3px solid rgba(52, 152, 219, 0.5);
+    `;
+    const taskLabel = document.createElement("div");
+    taskLabel.textContent = "当前任务:";
+    taskLabel.style.cssText = `
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.7);
+      margin-bottom: 5px;
+    `;
+    const taskValue = document.createElement("div");
+    taskValue.textContent = task || "暂无";
+    taskValue.style.cssText = `
+      font-size: 16px;
+      color: #fff;
+      font-weight: 500;
+      word-break: break-word;
+    `;
+    taskRow.appendChild(taskLabel);
+    taskRow.appendChild(taskValue);
+    content.appendChild(taskRow);
+
+    modal.appendChild(content);
+
+    // 添加到页面
+    document.body.appendChild(modal);
+    this.designInfoModal = modal;
+
+    // 点击背景关闭
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) {
+        modal.remove();
+        this.designInfoModal = null;
+      }
+    });
   }
 }
