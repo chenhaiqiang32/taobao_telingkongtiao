@@ -47,6 +47,55 @@ function fresnel(material,strength = 1.5,color = new THREE.Color(0xffff00)) {
   };
 
 }
+
+/**
+ * 菲涅尔混合效果 - 将菲涅尔颜色与原始材质颜色混合
+ * @param {THREE.Material} material
+ * @param {Number} strength 反射系数（控制边缘强度，默认1.5）
+ * @param {THREE.Color} color 菲涅尔边缘颜色
+ * @param {Number} fresnelIntensity 菲涅尔效果强度（0-1，默认0.2）
+ */
+export function fresnelBlend(material, strength = 1.5, color = new THREE.Color(0xffff00), fresnelIntensity = 0.2) {
+  // 如果材质已经有菲涅尔效果的 uniform 引用，直接更新颜色
+  if (material.userData.fresnelBlendUniforms) {
+    const uniforms = material.userData.fresnelBlendUniforms;
+    if (uniforms.uColor) {
+      uniforms.uColor.value.copy(color);
+    }
+    if (uniforms.fresnelIntensity !== undefined) {
+      uniforms.fresnelIntensity.value = fresnelIntensity;
+    }
+    return;
+  }
+
+  // 首次应用菲涅尔效果
+  const param = {
+    strength: strength,
+    uColor: color,
+    fresnelIntensity: fresnelIntensity
+  };
+
+  // 保存原始的 onBeforeCompile（如果存在）
+  const originalOnBeforeCompile = material.onBeforeCompile;
+
+  material.onBeforeCompile = shader => {
+    // 如果有原始的 onBeforeCompile，先执行它
+    if (originalOnBeforeCompile) {
+      originalOnBeforeCompile(shader);
+    }
+
+    shaderModify(shader, 'fresnelBlend', param);
+
+    // 保存 uniform 引用以便后续更新
+    if (shader.uniforms.uColor && shader.uniforms.fresnelIntensity) {
+      material.userData.fresnelBlendUniforms = {
+        uColor: shader.uniforms.uColor,
+        fresnelIntensity: shader.uniforms.fresnelIntensity,
+        strength: shader.uniforms.strength
+      };
+    }
+  };
+}
 function gatherFenceShader(material,uTime = { value: 0 },color = new THREE.Color(0xffff00),num) {
   const param = {
     uTime,

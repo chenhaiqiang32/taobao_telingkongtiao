@@ -1,4 +1,5 @@
 export * from "./fresnel";
+export * from "./fresnelBlend";
 export * from "./brigthness";
 export * from "./edgeFade";
 export * from "./glassEffect";

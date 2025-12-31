@@ -13,7 +13,7 @@ import EquipmentPlate from "../../components/business/equipMentPlate";
 import { SunnyTexture } from "../../components/weather";
 import { SpecialGround } from "../../../lib/blMeshes";
 import BoxModel from "../../../lib/boxModel";
-import { dynamicFade, fadeByTime } from "../../../shader";
+import { dynamicFade, fadeByTime, fresnelBlend } from "../../../shader";
 import { SceneHint } from "../../components/SceneHint";
 import { equipmentTreeManager } from "./equipmentTreeManager";
 import { globalAnimationManager } from "../../loader";
@@ -2702,20 +2702,19 @@ export class IndoorSubsystem extends CustomSystem {
 
         materials.forEach((material) => {
           if (material.isMeshStandardMaterial || material.isMeshPhysicalMaterial) {
-            // 使用自发光（emissive）来添加一层淡淡的颜色覆盖，而不是完全替换原色
-            // 这样可以保留原始材质的纹理和细节，同时用颜色来区分
-            material.emissive.copy(color);
-            material.emissiveIntensity = 0.2; // 设置较低的自发光强度，让颜色更柔和
+            // 检查是否已经有菲涅尔效果
+            const hasFresnelEffect = material.userData.fresnelBlendUniforms;
             
-            // 可选：轻微调整基础颜色，但保持原色的主色调
-            // 将新颜色混合到原色中，使用较低的混合比例
-            if (material.color) {
-              const originalColor = material.color.clone();
-              // 混合原色和新颜色（10% 新颜色 + 90% 原色）
-              material.color.lerp(color, 0.1);
+            // 应用菲涅尔着色器效果
+            // strength: 控制边缘强度，值越大边缘效果越明显
+            // fresnelIntensity: 控制菲涅尔效果的强度（0-1），值越小颜色越淡（已调整为0.2）
+            fresnelBlend(material, 1.5, color, 0.2);
+            
+            // 如果材质已经有菲涅尔效果，uniform 值已经更新，不需要重新编译
+            // 如果首次应用，需要重新编译着色器
+            if (!hasFresnelEffect) {
+              material.needsUpdate = true;
             }
-            
-            material.needsUpdate = true;
           }
         });
       }
