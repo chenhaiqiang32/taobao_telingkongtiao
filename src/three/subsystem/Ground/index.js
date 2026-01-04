@@ -68,7 +68,7 @@ const CONTROLS_SPHERE = new THREE.Sphere(center, 2880);
 
 /**@type {OrbitControls} */
 const controlsParameters = {
-  maxPolarAngle: Math.PI / 2,
+  maxPolarAngle: Math.PI/1.92 ,
 };
 
 /**@classdesc 地面广场子系统 */
@@ -1656,12 +1656,12 @@ string} name
     }
 
     const { radius, center } = getBoxCenter(this.cameraResetModel);
-    center.y += radius * 0.24;
+    center.y += radius * 0.01;
 
     const finalCameraPosition = new THREE.Vector3(
-      center.x - radius * 1.6,
-      center.y + 4,
-      center.z - radius * 1
+      center.x - radius * 1.2,
+      center.y-4,
+      center.z - radius * 0.68
     );
     const controlsTarget = center.clone();
 
