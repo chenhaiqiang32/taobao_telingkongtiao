@@ -233,9 +233,10 @@ export class IndoorSubsystem extends CustomSystem {
     all.forEach((child) => {
       this.simpleInsert[child.name] = [];
       child.children.forEach((ichild, index) => {
-        if (ichild.name.includes("_shebei")) {
+        let isShebei = ichild.name.includes("_shebei") || ichild.name.includes("_empty");
+        if (isShebei) {
           this.simpleInsert[child.name].push(ichild);
-          let labelName = ichild.name.split("_shebei")[0];
+          let labelName = ichild.name.includes("_shebei") ? ichild.name.split("_shebei")[0] : ichild.name.split("_empty")[0];
           const floorName = child.name; // 楼层名称
           
           // 初始化楼层标签对象
