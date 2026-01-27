@@ -625,528 +625,563 @@ export const onMessage = async () => {
   });
 
   // 创建测试按钮界面（仅用于测试，生产环境可删除）
-  // setTimeout(() => {
-  //   // 准备多组测试数据
-  //   const testDataSets = {
-  //     "测试1: comp06 开启": [
-  //       {
-  //         code: "comp06",
-  //         name: "室外侧1#压缩机",
-  //         status: 1, // 开启
-  //         attribute: [
-  //           { key: "室外侧1#压缩机电流", value: "15.5A" },
-  //           { key: "室外侧1#压缩机功率", value: "3500W" },
-  //           { key: "室外侧1#压缩机吸气温度", value: "25.5℃" },
-  //           { key: "室外侧1#压缩机吸气压力", value: "450KPA" },
-  //           { key: "室外侧1#压缩机吸气SAT", value: "29.16℃" },
-  //           { key: "室外侧1#压缩机排气温度", value: "65.2℃" },
-  //           { key: "室外侧1#压缩机排气压力", value: "1800KPA" },
-  //           { key: "制冷剂泄露", value: "否" },
-  //         ],
-  //       },
-  //     ],
-  //     "测试2: comp06 关闭": [
-  //       {
-  //         code: "comp06",
-  //         name: "室外侧1#压缩机",
-  //         status: 2, // 关闭
-  //         attribute: [
-  //           { key: "室外侧1#压缩机电流", value: "0A" },
-  //           { key: "室外侧1#压缩机功率", value: "0W" },
-  //           { key: "室外侧1#压缩机状态", value: "已关闭" },
-  //         ],
-  //       },
-  //     ],
-  //     "测试3: 多个设备开启": [
-  //       {
-  //         code: "comp06",
-  //         name: "室外侧1#压缩机",
-  //         status: 1,
-  //         attribute: [
-  //           { key: "电流", value: "15.5A" },
-  //           { key: "功率", value: "3500W" },
-  //         ],
-  //       },
-  //       {
-  //         code: "comp07",
-  //         name: "室外侧2#压缩机",
-  //         status: 1,
-  //         attribute: [
-  //           { key: "电流", value: "16.2A" },
-  //           { key: "功率", value: "3600W" },
-  //         ],
-  //       },
-  //     ],
-  //     "测试4: 多个设备关闭": [
-  //       {
-  //         code: "comp06",
-  //         name: "室外侧1#压缩机",
-  //         status: 2,
-  //         attribute: [{ key: "状态", value: "已关闭" }],
-  //       },
-  //       {
-  //         code: "comp07",
-  //         name: "室外侧2#压缩机",
-  //         status: 2,
-  //         attribute: [{ key: "状态", value: "已关闭" }],
-  //       },
-  //     ],
-  //   };
+  setTimeout(() => {
+    // 准备多组测试数据
+    const testDataSets = {
+      "测试1: comp06 开启": [
+        {
+          code: "comp06",
+          name: "室外侧1#压缩机",
+          status: 1, // 开启
+          attribute: [
+            { key: "室外侧1#压缩机电流", value: "15.5A" },
+            { key: "室外侧1#压缩机功率", value: "3500W" },
+            { key: "室外侧1#压缩机吸气温度", value: "25.5℃" },
+            { key: "室外侧1#压缩机吸气压力", value: "450KPA" },
+            { key: "室外侧1#压缩机吸气SAT", value: "29.16℃" },
+            { key: "室外侧1#压缩机排气温度", value: "65.2℃" },
+            { key: "室外侧1#压缩机排气压力", value: "1800KPA" },
+            { key: "制冷剂泄露", value: "否" },
+          ],
+        },
+      ],
+      "测试2: comp06 关闭": [
+        {
+          code: "comp06",
+          name: "室外侧1#压缩机",
+          status: 2, // 关闭
+          attribute: [
+            { key: "室外侧1#压缩机电流", value: "0A" },
+            { key: "室外侧1#压缩机功率", value: "0W" },
+            { key: "室外侧1#压缩机状态", value: "已关闭" },
+          ],
+        },
+      ],
+      "测试3: 多个设备开启": [
+        {
+          code: "comp06",
+          name: "室外侧1#压缩机",
+          status: 1,
+          attribute: [
+            { key: "电流", value: "15.5A" },
+            { key: "功率", value: "3500W" },
+          ],
+        },
+        {
+          code: "comp07",
+          name: "室外侧2#压缩机",
+          status: 1,
+          attribute: [
+            { key: "电流", value: "16.2A" },
+            { key: "功率", value: "3600W" },
+          ],
+        },
+      ],
+      "测试4: 多个设备关闭": [
+        {
+          code: "comp06",
+          name: "室外侧1#压缩机",
+          status: 2,
+          attribute: [{ key: "状态", value: "已关闭" }],
+        },
+        {
+          code: "comp07",
+          name: "室外侧2#压缩机",
+          status: 2,
+          attribute: [{ key: "状态", value: "已关闭" }],
+        },
+      ],
+    };
 
-  //   // 执行测试数据的函数
-  //   const executeTest = (testData, testName) => {
-  //     if (!core) {
-  //       console.warn("Core 未初始化，无法执行测试");
-  //       return;
-  //     }
+    // 执行测试数据的函数
+    const executeTest = (testData, testName) => {
+      if (!core) {
+        console.warn("Core 未初始化，无法执行测试");
+        return;
+      }
 
-  //     console.log(`=== 执行测试: ${testName} ===`);
-  //     console.log("测试数据:", testData);
+      console.log(`=== 执行测试: ${testName} ===`);
+      console.log("测试数据:", testData);
 
-  //     // 室内场景处理
-  //     if (core.indoorSubsystem) {
-  //       core.indoorSubsystem.updateModelStatus(testData);
-  //     }
+      // 室内场景处理
+      if (core.indoorSubsystem) {
+        core.indoorSubsystem.updateModelStatus(testData);
+      }
 
-  //     // 室外场景处理
-  //     if (core.ground) {
-  //       core.ground.updateModelStatus(testData);
-  //     }
+      // 室外场景处理
+      if (core.ground) {
+        core.ground.updateModelStatus(testData);
+      }
 
-  //     console.log(`=== ${testName} 测试完成 ===`);
-  //   };
+      console.log(`=== ${testName} 测试完成 ===`);
+    };
 
-  //   // 创建测试面板
-  //   const testPanel = document.createElement("div");
-  //   testPanel.id = "updateModelTestPanel";
-  //   testPanel.style.cssText = `
-  //     position: fixed;
-  //     top: 20px;
-  //     right: 20px;
-  //     background: rgba(0, 0, 0, 0.8);
-  //     border: 2px solid #00ced1;
-  //     border-radius: 8px;
-  //     padding: 15px;
-  //     z-index: 10000;
-  //     font-family: Arial, sans-serif;
-  //     min-width: 200px;
-  //   `;
+    // 创建测试面板
+    const testPanel = document.createElement("div");
+    testPanel.id = "updateModelTestPanel";
+    testPanel.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: rgba(0, 0, 0, 0.8);
+      border: 2px solid #00ced1;
+      border-radius: 8px;
+      padding: 15px;
+      z-index: 10000;
+      font-family: Arial, sans-serif;
+      min-width: 200px;
+    `;
 
-  //   const title = document.createElement("div");
-  //   title.textContent = "updateModel 测试面板";
-  //   title.style.cssText = `
-  //     color: #00ced1;
-  //     font-size: 16px;
-  //     font-weight: bold;
-  //     margin-bottom: 10px;
-  //     text-align: center;
-  //   `;
-  //   testPanel.appendChild(title);
+    const title = document.createElement("div");
+    title.textContent = "updateModel 测试面板";
+    title.style.cssText = `
+      color: #00ced1;
+      font-size: 16px;
+      font-weight: bold;
+      margin-bottom: 10px;
+      text-align: center;
+    `;
+    testPanel.appendChild(title);
 
-  //   // 创建按钮
-  //   Object.keys(testDataSets).forEach((testName) => {
-  //     const button = document.createElement("button");
-  //     button.textContent = testName;
-  //     button.style.cssText = `
-  //       display: block;
-  //       width: 100%;
-  //       margin: 5px 0;
-  //       padding: 8px 12px;
-  //       background: #1a1a2e;
-  //       color: #00ced1;
-  //       border: 1px solid #00ced1;
-  //       border-radius: 4px;
-  //       cursor: pointer;
-  //       font-size: 12px;
-  //       transition: all 0.3s;
-  //     `;
+    // 创建按钮
+    Object.keys(testDataSets).forEach((testName) => {
+      const button = document.createElement("button");
+      button.textContent = testName;
+      button.style.cssText = `
+        display: block;
+        width: 100%;
+        margin: 5px 0;
+        padding: 8px 12px;
+        background: #1a1a2e;
+        color: #00ced1;
+        border: 1px solid #00ced1;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+        transition: all 0.3s;
+      `;
 
-  //     // 鼠标悬停效果
-  //     button.addEventListener("mouseenter", () => {
-  //       button.style.background = "#00ced1";
-  //       button.style.color = "#000";
-  //     });
-  //     button.addEventListener("mouseleave", () => {
-  //       button.style.background = "#1a1a2e";
-  //       button.style.color = "#00ced1";
-  //     });
+      // 鼠标悬停效果
+      button.addEventListener("mouseenter", () => {
+        button.style.background = "#00ced1";
+        button.style.color = "#000";
+      });
+      button.addEventListener("mouseleave", () => {
+        button.style.background = "#1a1a2e";
+        button.style.color = "#00ced1";
+      });
 
-  //     // 点击事件
-  //     button.addEventListener("click", () => {
-  //       executeTest(testDataSets[testName], testName);
-  //       // 按钮点击反馈
-  //       button.style.background = "#90ee90";
-  //       button.style.color = "#000";
-  //       setTimeout(() => {
-  //         button.style.background = "#1a1a2e";
-  //         button.style.color = "#00ced1";
-  //       }, 300);
-  //     });
+      // 点击事件
+      button.addEventListener("click", () => {
+        executeTest(testDataSets[testName], testName);
+        // 按钮点击反馈
+        button.style.background = "#90ee90";
+        button.style.color = "#000";
+        setTimeout(() => {
+          button.style.background = "#1a1a2e";
+          button.style.color = "#00ced1";
+        }, 300);
+      });
 
-  //     testPanel.appendChild(button);
-  //   });
+      testPanel.appendChild(button);
+    });
 
-  //   // 添加关闭按钮
-  //   const closeButton = document.createElement("button");
-  //   closeButton.textContent = "关闭面板";
-  //   closeButton.style.cssText = `
-  //     display: block;
-  //     width: 100%;
-  //     margin-top: 10px;
-  //     padding: 6px 12px;
-  //     background: #8b0000;
-  //     color: #fff;
-  //     border: 1px solid #8b0000;
-  //     border-radius: 4px;
-  //     cursor: pointer;
-  //     font-size: 12px;
-  //   `;
-  //   closeButton.addEventListener("click", () => {
-  //     testPanel.remove();
-  //   });
-  //   testPanel.appendChild(closeButton);
+    // 添加关闭按钮
+    const closeButton = document.createElement("button");
+    closeButton.textContent = "关闭面板";
+    closeButton.style.cssText = `
+      display: block;
+      width: 100%;
+      margin-top: 10px;
+      padding: 6px 12px;
+      background: #8b0000;
+      color: #fff;
+      border: 1px solid #8b0000;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    `;
+    closeButton.addEventListener("click", () => {
+      testPanel.remove();
+    });
+    testPanel.appendChild(closeButton);
 
-  //   // 添加到页面
-  //   document.body.appendChild(testPanel);
+    // 添加到页面
+    document.body.appendChild(testPanel);
 
-  //   console.log("=== updateModel 测试面板已创建 ===");
+    console.log("=== updateModel 测试面板已创建 ===");
 
-  //   // 创建 updateDesign 测试面板
-  //   const designTestDataSets = {
-  //     "设计测试1: 可跳转工艺": [
-  //       {
-  //         code: "wccl-400t-1",
-  //         name: "1楼工艺",
-  //         status: "#00ff00",
-  //         info: {
-  //           project: "PROJ-2024-001",
-  //           startTime: "2024-01-15 08:00:00",
-  //           task: "正在进行设备安装调试",
-  //         },
-  //       },
-  //     ],
-  //     "设计测试2: 不可跳转工艺": [
-  //       {
-  //         code: "wccl-400t-1",
-  //         name: "测试工艺01",
-  //         status: "#ff0000",
-  //         info: {
-  //           project: "PROJ-2024-002",
-  //           startTime: "2024-02-20 09:30:00",
-  //           task: "等待材料到货，预计下周开始施工",
-  //         },
-  //       },
-  //     ],
-  //     "设计测试3: 多个工艺": [
-  //       {
-  //         code: "test01",
-  //         name: "测试工艺01",
-  //         status: "#ffff00",
-  //         info: {
-  //           project: "PROJ-2024-003",
-  //           startTime: "2024-03-10 10:00:00",
-  //           task: "已完成基础施工，正在进行管道安装",
-  //         },
-  //       },
-  //       {
-  //         code: "test02",
-  //         name: "测试工艺02",
-  //         status: "#00ffff",
-  //         info: {
-  //           project: "PROJ-2024-004",
-  //           startTime: "2024-03-15 14:00:00",
-  //           task: "设备调试中，预计本周完成",
-  //         },
-  //       },
-  //     ],
-  //     "设计测试4: 无info信息": [
-  //       {
-  //         code: "test03",
-  //         name: "测试工艺03",
-  //         status: "#ff00ff",
-  //       },
-  //     ],
-  //   };
+    // 创建 updateDesign 测试面板
+    const designTestDataSets = {
+      "设计测试1: 可跳转工艺": [
+        {
+          code: "wccl-400t-1",
+          name: "1楼工艺",
+          status: "#00ff00",
+          info: {
+            project: "PROJ-2024-001",
+            startTime: "2024-01-15 08:00:00",
+            task: "正在进行设备安装调试",
+          },
+        },
+      ],
+      "设计测试2: 不可跳转工艺": [
+        {
+          code: "wccl-400t-1",
+          name: "测试工艺01",
+          status: "#ff0000",
+          info: {
+            project: "PROJ-2024-002",
+            startTime: "2024-02-20 09:30:00",
+            task: "等待材料到货，预计下周开始施工",
+          },
+        },
+      ],
+      "设计测试3: 多个工艺": [
+        {
+          code: "test01",
+          name: "测试工艺01",
+          status: "#ffff00",
+          info: {
+            project: "PROJ-2024-003",
+            startTime: "2024-03-10 10:00:00",
+            task: "已完成基础施工，正在进行管道安装",
+          },
+        },
+        {
+          code: "test02",
+          name: "测试工艺02",
+          status: "#00ffff",
+          info: {
+            project: "PROJ-2024-004",
+            startTime: "2024-03-15 14:00:00",
+            task: "设备调试中，预计本周完成",
+          },
+        },
+      ],
+      "设计测试4: 无info信息": [
+        {
+          code: "test03",
+          name: "测试工艺03",
+          status: "#ff00ff",
+        },
+      ],
+    };
 
-  //   // 执行 updateDesign 测试数据的函数
-  //   const executeDesignTest = (testData, testName) => {
-  //     if (!core) {
-  //       console.warn("Core 未初始化，无法执行测试");
-  //       return;
-  //     }
+    // 执行 updateDesign 测试数据的函数
+    const executeDesignTest = (testData, testName) => {
+      if (!core) {
+        console.warn("Core 未初始化，无法执行测试");
+        return;
+      }
 
-  //     console.log(`=== 执行 updateDesign 测试: ${testName} ===`);
-  //     console.log("测试数据:", testData);
+      console.log(`=== 执行 updateDesign 测试: ${testName} ===`);
+      console.log("测试数据:", testData);
 
-  //     // 室内场景处理
-  //     if (core.indoorSubsystem) {
-  //       core.indoorSubsystem.updateDesign(testData);
-  //     }
+      // 室内场景处理
+      if (core.indoorSubsystem) {
+        core.indoorSubsystem.updateDesign(testData);
+      }
 
-  //     // 室外场景处理
-  //     if (core.ground) {
-  //       core.ground.updateDesign(testData);
-  //     }
+      // 室外场景处理
+      if (core.ground) {
+        core.ground.updateDesign(testData);
+      }
 
-  //     console.log(`=== ${testName} 测试完成 ===`);
-  //   };
+      console.log(`=== ${testName} 测试完成 ===`);
+    };
 
-  //   // 创建 updateDesign 测试面板
-  //   const designTestPanel = document.createElement("div");
-  //   designTestPanel.id = "updateDesignTestPanel";
-  //   designTestPanel.style.cssText = `
-  //     position: fixed;
-  //     top: 20px;
-  //     right: 240px;
-  //     background: rgba(0, 0, 0, 0.8);
-  //     border: 2px solid #ff6b6b;
-  //     border-radius: 8px;
-  //     padding: 15px;
-  //     z-index: 10000;
-  //     font-family: Arial, sans-serif;
-  //     min-width: 200px;
-  //   `;
+    // 创建 updateDesign 测试面板
+    const designTestPanel = document.createElement("div");
+    designTestPanel.id = "updateDesignTestPanel";
+    designTestPanel.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 240px;
+      background: rgba(0, 0, 0, 0.8);
+      border: 2px solid #ff6b6b;
+      border-radius: 8px;
+      padding: 15px;
+      z-index: 10000;
+      font-family: Arial, sans-serif;
+      min-width: 200px;
+    `;
 
-  //   const designTitle = document.createElement("div");
-  //   designTitle.textContent = "updateDesign 测试面板";
-  //   designTitle.style.cssText = `
-  //     color: #ff6b6b;
-  //     font-size: 16px;
-  //     font-weight: bold;
-  //     margin-bottom: 10px;
-  //     text-align: center;
-  //   `;
-  //   designTestPanel.appendChild(designTitle);
+    const designTitle = document.createElement("div");
+    designTitle.textContent = "updateDesign 测试面板";
+    designTitle.style.cssText = `
+      color: #ff6b6b;
+      font-size: 16px;
+      font-weight: bold;
+      margin-bottom: 10px;
+      text-align: center;
+    `;
+    designTestPanel.appendChild(designTitle);
 
-  //   // 创建按钮
-  //   Object.keys(designTestDataSets).forEach((testName) => {
-  //     const button = document.createElement("button");
-  //     button.textContent = testName;
-  //     button.style.cssText = `
-  //       display: block;
-  //       width: 100%;
-  //       margin: 5px 0;
-  //       padding: 8px 12px;
-  //       background: #1a1a2e;
-  //       color: #ff6b6b;
-  //       border: 1px solid #ff6b6b;
-  //       border-radius: 4px;
-  //       cursor: pointer;
-  //       font-size: 12px;
-  //       transition: all 0.3s;
-  //     `;
+    // 创建按钮
+    Object.keys(designTestDataSets).forEach((testName) => {
+      const button = document.createElement("button");
+      button.textContent = testName;
+      button.style.cssText = `
+        display: block;
+        width: 100%;
+        margin: 5px 0;
+        padding: 8px 12px;
+        background: #1a1a2e;
+        color: #ff6b6b;
+        border: 1px solid #ff6b6b;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+        transition: all 0.3s;
+      `;
 
-  //     // 鼠标悬停效果
-  //     button.addEventListener("mouseenter", () => {
-  //       button.style.background = "#ff6b6b";
-  //       button.style.color = "#000";
-  //     });
-  //     button.addEventListener("mouseleave", () => {
-  //       button.style.background = "#1a1a2e";
-  //       button.style.color = "#ff6b6b";
-  //     });
+      // 鼠标悬停效果
+      button.addEventListener("mouseenter", () => {
+        button.style.background = "#ff6b6b";
+        button.style.color = "#000";
+      });
+      button.addEventListener("mouseleave", () => {
+        button.style.background = "#1a1a2e";
+        button.style.color = "#ff6b6b";
+      });
 
-  //     // 点击事件
-  //     button.addEventListener("click", () => {
-  //       executeDesignTest(designTestDataSets[testName], testName);
-  //       // 按钮点击反馈
-  //       button.style.background = "#90ee90";
-  //       button.style.color = "#000";
-  //       setTimeout(() => {
-  //         button.style.background = "#1a1a2e";
-  //         button.style.color = "#ff6b6b";
-  //       }, 300);
-  //     });
+      // 点击事件
+      button.addEventListener("click", () => {
+        executeDesignTest(designTestDataSets[testName], testName);
+        // 按钮点击反馈
+        button.style.background = "#90ee90";
+        button.style.color = "#000";
+        setTimeout(() => {
+          button.style.background = "#1a1a2e";
+          button.style.color = "#ff6b6b";
+        }, 300);
+      });
 
-  //     designTestPanel.appendChild(button);
-  //   });
+      designTestPanel.appendChild(button);
+    });
 
-  //   // 添加关闭按钮
-  //   const designCloseButton = document.createElement("button");
-  //   designCloseButton.textContent = "关闭面板";
-  //   designCloseButton.style.cssText = `
-  //     display: block;
-  //     width: 100%;
-  //     margin-top: 10px;
-  //     padding: 6px 12px;
-  //     background: #8b0000;
-  //     color: #fff;
-  //     border: 1px solid #8b0000;
-  //     border-radius: 4px;
-  //     cursor: pointer;
-  //     font-size: 12px;
-  //   `;
-  //   designCloseButton.addEventListener("click", () => {
-  //     designTestPanel.remove();
-  //   });
-  //   designTestPanel.appendChild(designCloseButton);
+    // 添加关闭按钮
+    const designCloseButton = document.createElement("button");
+    designCloseButton.textContent = "关闭面板";
+    designCloseButton.style.cssText = `
+      display: block;
+      width: 100%;
+      margin-top: 10px;
+      padding: 6px 12px;
+      background: #8b0000;
+      color: #fff;
+      border: 1px solid #8b0000;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    `;
+    designCloseButton.addEventListener("click", () => {
+      designTestPanel.remove();
+    });
+    designTestPanel.appendChild(designCloseButton);
 
-  //   // 添加到页面
-  //   document.body.appendChild(designTestPanel);
+    // 添加到页面
+    document.body.appendChild(designTestPanel);
 
-  //   console.log("=== updateDesign 测试面板已创建 ===");
+    console.log("=== updateDesign 测试面板已创建 ===");
 
-  //   // 创建牌子显示控制测试面板
-  //   const labelsControlPanel = document.createElement("div");
-  //   labelsControlPanel.id = "floorLabelsControlPanel";
-  //   labelsControlPanel.style.cssText = `
-  //     position: fixed;
-  //     top: 20px;
-  //     right: 480px;
-  //     background: rgba(0, 0, 0, 0.8);
-  //     border: 2px solid #9b59b6;
-  //     border-radius: 8px;
-  //     padding: 15px;
-  //     z-index: 10000;
-  //     font-family: Arial, sans-serif;
-  //     min-width: 200px;
-  //   `;
+    // 创建牌子显示控制测试面板
+    const labelsControlPanel = document.createElement("div");
+    labelsControlPanel.id = "floorLabelsControlPanel";
+    labelsControlPanel.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 480px;
+      background: rgba(0, 0, 0, 0.8);
+      border: 2px solid #9b59b6;
+      border-radius: 8px;
+      padding: 15px;
+      z-index: 10000;
+      font-family: Arial, sans-serif;
+      min-width: 200px;
+    `;
 
-  //   const labelsControlTitle = document.createElement("div");
-  //   labelsControlTitle.textContent = "牌子显示控制";
-  //   labelsControlTitle.style.cssText = `
-  //     color: #9b59b6;
-  //     font-size: 16px;
-  //     font-weight: bold;
-  //     margin-bottom: 10px;
-  //     text-align: center;
-  //   `;
-  //   labelsControlPanel.appendChild(labelsControlTitle);
+    const labelsControlTitle = document.createElement("div");
+    labelsControlTitle.textContent = "牌子显示控制";
+    labelsControlTitle.style.cssText = `
+      color: #9b59b6;
+      font-size: 16px;
+      font-weight: bold;
+      margin-bottom: 10px;
+      text-align: center;
+    `;
+    labelsControlPanel.appendChild(labelsControlTitle);
 
-  //   // 创建显示按钮
-  //   const showButton = document.createElement("button");
-  //   showButton.textContent = "默认显示牌子";
-  //   showButton.style.cssText = `
-  //     display: block;
-  //     width: 100%;
-  //     margin: 5px 0;
-  //     padding: 8px 12px;
-  //     background: #1a1a2e;
-  //     color: #9b59b6;
-  //     border: 1px solid #9b59b6;
-  //     border-radius: 4px;
-  //     cursor: pointer;
-  //     font-size: 12px;
-  //     transition: all 0.3s;
-  //   `;
-  //   showButton.addEventListener("mouseenter", () => {
-  //     showButton.style.background = "#9b59b6";
-  //     showButton.style.color = "#000";
-  //   });
-  //   showButton.addEventListener("mouseleave", () => {
-  //     showButton.style.background = "#1a1a2e";
-  //     showButton.style.color = "#9b59b6";
-  //   });
-  //   showButton.addEventListener("click", () => {
-  //     if (core && core.indoorSubsystem) {
-  //       core.indoorSubsystem.setFloorLabelsVisible(true);
-  //       // 按钮点击反馈
-  //       showButton.style.background = "#90ee90";
-  //       showButton.style.color = "#000";
-  //       setTimeout(() => {
-  //         showButton.style.background = "#1a1a2e";
-  //         showButton.style.color = "#9b59b6";
-  //       }, 300);
-  //     }
-  //   });
-  //   labelsControlPanel.appendChild(showButton);
+    // 创建显示按钮
+    const showButton = document.createElement("button");
+    showButton.textContent = "默认显示牌子";
+    showButton.style.cssText = `
+      display: block;
+      width: 100%;
+      margin: 5px 0;
+      padding: 8px 12px;
+      background: #1a1a2e;
+      color: #9b59b6;
+      border: 1px solid #9b59b6;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.3s;
+    `;
+    showButton.addEventListener("mouseenter", () => {
+      showButton.style.background = "#9b59b6";
+      showButton.style.color = "#000";
+    });
+    showButton.addEventListener("mouseleave", () => {
+      showButton.style.background = "#1a1a2e";
+      showButton.style.color = "#9b59b6";
+    });
+    showButton.addEventListener("click", () => {
+      if (core && core.indoorSubsystem) {
+        core.indoorSubsystem.setFloorLabelsVisible(true);
+        // 按钮点击反馈
+        showButton.style.background = "#90ee90";
+        showButton.style.color = "#000";
+        setTimeout(() => {
+          showButton.style.background = "#1a1a2e";
+          showButton.style.color = "#9b59b6";
+        }, 300);
+      }
+    });
+    labelsControlPanel.appendChild(showButton);
 
-  //   // 创建隐藏按钮
-  //   const hideButton = document.createElement("button");
-  //   hideButton.textContent = "默认隐藏牌子";
-  //   hideButton.style.cssText = `
-  //     display: block;
-  //     width: 100%;
-  //     margin: 5px 0;
-  //     padding: 8px 12px;
-  //     background: #1a1a2e;
-  //     color: #9b59b6;
-  //     border: 1px solid #9b59b6;
-  //     border-radius: 4px;
-  //     cursor: pointer;
-  //     font-size: 12px;
-  //     transition: all 0.3s;
-  //   `;
-  //   hideButton.addEventListener("mouseenter", () => {
-  //     hideButton.style.background = "#9b59b6";
-  //     hideButton.style.color = "#000";
-  //   });
-  //   hideButton.addEventListener("mouseleave", () => {
-  //     hideButton.style.background = "#1a1a2e";
-  //     hideButton.style.color = "#9b59b6";
-  //   });
-  //   hideButton.addEventListener("click", () => {
-  //     if (core && core.indoorSubsystem) {
-  //       core.indoorSubsystem.setFloorLabelsVisible(false);
-  //       // 按钮点击反馈
-  //       hideButton.style.background = "#90ee90";
-  //       hideButton.style.color = "#000";
-  //       setTimeout(() => {
-  //         hideButton.style.background = "#1a1a2e";
-  //         hideButton.style.color = "#9b59b6";
-  //       }, 300);
-  //     }
-  //   });
-  //   labelsControlPanel.appendChild(hideButton);
+    // 创建隐藏按钮
+    const hideButton = document.createElement("button");
+    hideButton.textContent = "默认隐藏牌子";
+    hideButton.style.cssText = `
+      display: block;
+      width: 100%;
+      margin: 5px 0;
+      padding: 8px 12px;
+      background: #1a1a2e;
+      color: #9b59b6;
+      border: 1px solid #9b59b6;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.3s;
+    `;
+    hideButton.addEventListener("mouseenter", () => {
+      hideButton.style.background = "#9b59b6";
+      hideButton.style.color = "#000";
+    });
+    hideButton.addEventListener("mouseleave", () => {
+      hideButton.style.background = "#1a1a2e";
+      hideButton.style.color = "#9b59b6";
+    });
+    hideButton.addEventListener("click", () => {
+      if (core && core.indoorSubsystem) {
+        core.indoorSubsystem.setFloorLabelsVisible(false);
+        // 按钮点击反馈
+        hideButton.style.background = "#90ee90";
+        hideButton.style.color = "#000";
+        setTimeout(() => {
+          hideButton.style.background = "#1a1a2e";
+          hideButton.style.color = "#9b59b6";
+        }, 300);
+      }
+    });
+    labelsControlPanel.appendChild(hideButton);
 
-  //   // 添加状态显示
-  //   const statusDisplay = document.createElement("div");
-  //   statusDisplay.id = "labelsControlStatus";
-  //   statusDisplay.textContent = "当前状态: 默认显示";
-  //   statusDisplay.style.cssText = `
-  //     margin-top: 10px;
-  //     padding: 8px;
-  //     background: rgba(155, 89, 182, 0.2);
-  //     border-radius: 4px;
-  //     font-size: 12px;
-  //     color: #9b59b6;
-  //     text-align: center;
-  //   `;
-  //   labelsControlPanel.appendChild(statusDisplay);
+     // 创建隐藏按钮
+     const hideButton2 = document.createElement("button");
+     hideButton2.textContent = "切换到场景accl-250t-1";
+     hideButton2.style.cssText = `
+       display: block;
+       width: 100%;
+       margin: 5px 0;
+       padding: 8px 12px;
+       background: #1a1a2e;
+       color: #9b59b6;
+       border: 1px solid #9b59b6;
+       border-radius: 4px;
+       cursor: pointer;
+       font-size: 12px;
+       transition: all 0.3s;
+     `;
+     hideButton2.addEventListener("mouseenter", () => {
+       hideButton.style.background = "#9b59b6";
+       hideButton.style.color = "#000";
+     });
+     hideButton2.addEventListener("mouseleave", () => {
+       hideButton.style.background = "#1a1a2e";
+       hideButton.style.color = "#9b59b6";
+     });
+     hideButton2.addEventListener("click", () => {
+      core.changeIndoor("accl-250t-1");
+      // 按钮点击反馈
+      hideButton2.style.background = "#90ee90";
+      hideButton2.style.color = "#000";
+      setTimeout(() => {
+        hideButton2.style.background = "#1a1a2e";
+        hideButton2.style.color = "#9b59b6";
+      }, 300);
+     });
+     labelsControlPanel.appendChild(hideButton2);
+    // 添加状态显示
+    const statusDisplay = document.createElement("div");
+    statusDisplay.id = "labelsControlStatus";
+    statusDisplay.textContent = "当前状态: 默认显示";
+    statusDisplay.style.cssText = `
+      margin-top: 10px;
+      padding: 8px;
+      background: rgba(155, 89, 182, 0.2);
+      border-radius: 4px;
+      font-size: 12px;
+      color: #9b59b6;
+      text-align: center;
+    `;
+    labelsControlPanel.appendChild(statusDisplay);
 
-  //   // 添加关闭按钮
-  //   const labelsControlCloseButton = document.createElement("button");
-  //   labelsControlCloseButton.textContent = "关闭面板";
-  //   labelsControlCloseButton.style.cssText = `
-  //     display: block;
-  //     width: 100%;
-  //     margin-top: 10px;
-  //     padding: 6px 12px;
-  //     background: #8b0000;
-  //     color: #fff;
-  //     border: 1px solid #8b0000;
-  //     border-radius: 4px;
-  //     cursor: pointer;
-  //     font-size: 12px;
-  //   `;
-  //   labelsControlCloseButton.addEventListener("click", () => {
-  //     labelsControlPanel.remove();
-  //   });
-  //   labelsControlPanel.appendChild(labelsControlCloseButton);
+    // 添加关闭按钮
+    const labelsControlCloseButton = document.createElement("button");
+    labelsControlCloseButton.textContent = "关闭面板";
+    labelsControlCloseButton.style.cssText = `
+      display: block;
+      width: 100%;
+      margin-top: 10px;
+      padding: 6px 12px;
+      background: #8b0000;
+      color: #fff;
+      border: 1px solid #8b0000;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    `;
+    labelsControlCloseButton.addEventListener("click", () => {
+      labelsControlPanel.remove();
+    });
+    labelsControlPanel.appendChild(labelsControlCloseButton);
 
-  //   // 添加到页面
-  //   document.body.appendChild(labelsControlPanel);
+    // 添加到页面
+    document.body.appendChild(labelsControlPanel);
 
-  //   // 定期更新状态显示
-  //   const updateStatusDisplay = () => {
-  //     if (core && core.indoorSubsystem && statusDisplay) {
-  //       const currentStatus = core.indoorSubsystem.showLabelsByDefault;
-  //       statusDisplay.textContent = `当前状态: ${currentStatus ? '默认显示' : '默认隐藏'}`;
-  //     }
-  //   };
+    // 定期更新状态显示
+    const updateStatusDisplay = () => {
+      if (core && core.indoorSubsystem && statusDisplay) {
+        const currentStatus = core.indoorSubsystem.showLabelsByDefault;
+        statusDisplay.textContent = `当前状态: ${currentStatus ? '默认显示' : '默认隐藏'}`;
+      }
+    };
 
-  //   // 监听状态变化（通过拦截方法调用）
-  //   if (core && core.indoorSubsystem) {
-  //     const originalSetFloorLabelsVisible = core.indoorSubsystem.setFloorLabelsVisible.bind(core.indoorSubsystem);
-  //     core.indoorSubsystem.setFloorLabelsVisible = function(visible) {
-  //       originalSetFloorLabelsVisible(visible);
-  //       updateStatusDisplay();
-  //     };
-  //   }
+    // 监听状态变化（通过拦截方法调用）
+    if (core && core.indoorSubsystem) {
+      const originalSetFloorLabelsVisible = core.indoorSubsystem.setFloorLabelsVisible.bind(core.indoorSubsystem);
+      core.indoorSubsystem.setFloorLabelsVisible = function(visible) {
+        originalSetFloorLabelsVisible(visible);
+        updateStatusDisplay();
+      };
+    }
 
-  //   // 初始状态更新
-  //   setTimeout(updateStatusDisplay, 100);
+    // 初始状态更新
+    setTimeout(updateStatusDisplay, 100);
 
-  //   console.log("=== 牌子显示控制测试面板已创建 ===");
-  // }, 3000); // 延迟3秒执行，确保场景已加载
+    console.log("=== 牌子显示控制测试面板已创建 ===");
+  }, 3000); // 延迟3秒执行，确保场景已加载
 };
