@@ -1091,7 +1091,7 @@ export const onMessage = async () => {
 
      // 创建隐藏按钮
      const hideButton2 = document.createElement("button");
-     hideButton2.textContent = "切换到场景accl-250t-1";
+     hideButton2.textContent = "切换到场景aF03";
      hideButton2.style.cssText = `
        display: block;
        width: 100%;
@@ -1114,7 +1114,7 @@ export const onMessage = async () => {
        hideButton.style.color = "#9b59b6";
      });
      hideButton2.addEventListener("click", () => {
-      core.changeIndoor("accl-250t-1");
+      core.changeIndoor("aF03");
       // 按钮点击反馈
       hideButton2.style.background = "#90ee90";
       hideButton2.style.color = "#000";
@@ -1124,6 +1124,78 @@ export const onMessage = async () => {
       }, 300);
      });
      labelsControlPanel.appendChild(hideButton2);
+
+
+     const hideButton3 = document.createElement("button");
+     hideButton3.textContent = "切换到场景aF01";
+     hideButton3.style.cssText = `
+       display: block;
+       width: 100%;
+       margin: 5px 0;
+       padding: 8px 12px;
+       background: #1a1a2e;
+       color: #9b59b6;
+       border: 1px solid #9b59b6;
+       border-radius: 4px;
+       cursor: pointer;
+       font-size: 12px;
+       transition: all 0.3s;
+     `;
+     hideButton3.addEventListener("mouseenter", () => {
+       hideButton.style.background = "#9b59b6";
+       hideButton.style.color = "#000";
+     });
+     hideButton3.addEventListener("mouseleave", () => {
+       hideButton.style.background = "#1a1a2e";
+       hideButton.style.color = "#9b59b6";
+     });
+     hideButton3.addEventListener("click", () => {
+      core.changeIndoor("aF01");
+      // 按钮点击反馈
+      hideButton3.style.background = "#90ee90";
+      hideButton3.style.color = "#000";
+      setTimeout(() => {
+        hideButton3.style.background = "#1a1a2e";
+        hideButton3.style.color = "#9b59b6";
+      }, 300);
+     });
+     labelsControlPanel.appendChild(hideButton3);
+
+
+     const hideButton4 = document.createElement("button");
+     hideButton4.textContent = "切换到场景aF02";
+     hideButton4.style.cssText = `
+       display: block;
+       width: 100%;
+       margin: 5px 0;
+       padding: 8px 12px;
+       background: #1a1a2e;
+       color: #9b59b6;
+       border: 1px solid #9b59b6;
+       border-radius: 4px;
+       cursor: pointer;
+       font-size: 12px;
+       transition: all 0.3s;
+     `;
+     hideButton4.addEventListener("mouseenter", () => {
+       hideButton.style.background = "#9b59b6";
+       hideButton.style.color = "#000";
+     });
+     hideButton4.addEventListener("mouseleave", () => {
+       hideButton.style.background = "#1a1a2e";
+       hideButton.style.color = "#9b59b6";
+     });
+     hideButton4.addEventListener("click", () => {
+      core.changeIndoor("aF02");
+      // 按钮点击反馈
+      hideButton4.style.background = "#90ee90";
+      hideButton4.style.color = "#000";
+      setTimeout(() => {
+        hideButton4.style.background = "#1a1a2e";
+        hideButton4.style.color = "#9b59b6";
+      }, 300);
+     });
+     labelsControlPanel.appendChild(hideButton4);
     // 添加状态显示
     const statusDisplay = document.createElement("div");
     statusDisplay.id = "labelsControlStatus";
